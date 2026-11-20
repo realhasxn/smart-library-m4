@@ -1,0 +1,277 @@
+\<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Library — Admin Control Center</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+
+  <header class="border-b border-slate-800 bg-slate-900/85 backdrop-blur-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="px-2.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-bold">
+          ADMIN
+        </span>
+        <h1 class="font-bold text-base">Library Control Center</h1>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="btn-reset-all" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-600/80 text-xs font-semibold border border-slate-700 transition">
+          Reset All Seats
+        </button>
+        <a href="index.html" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-bold">
+          ← Student Portal
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <!-- Live Metrics -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+        <p class="text-xs text-slate-400">Total Capacity</p>
+        <p id="stat-total" class="text-2xl font-bold mt-1">0</p>
+      </div>
+      <div class="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-4">
+        <p class="text-xs text-emerald-400">Vacant Chairs</p>
+        <p id="stat-vacant" class="text-2xl font-bold text-emerald-300 mt-1">0</p>
+      </div>
+      <div class="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-4">
+        <p class="text-xs text-amber-400">20-Min Hold (En Route)</p>
+        <p id="stat-reserved" class="text-2xl font-bold text-amber-300 mt-1">0</p>
+      </div>
+      <div class="rounded-2xl border border-rose-500/30 bg-rose-950/20 p-4">
+        <p class="text-xs text-rose-400">QR Confirmed (Occupied)</p>
+        <p id="stat-occupied" class="text-2xl font-bold text-rose-300 mt-1">0</p>
+      </div>
+    </div>
+
+    <!-- Floor Tabs + Expiry Sweep -->
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex gap-2">
+        <button onclick="setFloorFilter('ALL')" id="tab-ALL" class="floor-tab px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white">All Floors</button>
+        <button onclick="setFloorFilter(1)" id="tab-1" class="floor-tab px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-400 border border-slate-800">Floor 01</button>
+        <button onclick="setFloorFilter(2)" id="tab-2" class="floor-tab px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-400 border border-slate-800">Floor 02</button>
+        <button onclick="setFloorFilter(3)" id="tab-3" class="floor-tab px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-400 border border-slate-800">Floor 03</button>
+      </div>
+      <button id="btn-cleanup" class="text-xs font-semibold text-amber-400 hover:text-amber-300">
+        ↻ Sync & Release Expired Now
+      </button>
+    </div>
+
+    <!-- Live Seat Occupancy Table -->
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/70 overflow-hidden shadow-xl">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-950/80 text-slate-400 uppercase tracking-wider border-b border-slate-800">
+            <tr>
+              <th class="px-5 py-3.5">Chair</th>
+              <th class="px-5 py-3.5">Floor</th>
+              <th class="px-5 py-3.5">Status</th>
+              <th class="px-5 py-3.5">Student</th>
+              <th class="px-5 py-3.5">Live Timer / Checkout</th>
+              <th class="px-5 py-3.5 text-right">Controls</th>
+            </tr>
+          </thead>
+          <tbody id="admin-tbody" class="divide-y divide-slate-800/80"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Scannable Chair QR Popup -->
+  <div id="qr-popup" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div class="w-full max-w-xs rounded-2xl border border-slate-800 bg-slate-950 p-6 text-center space-y-4">
+      <h3 id="qr-popup-title" class="font-bold text-base text-white">Chair QR Sticker</h3>
+      <div class="bg-white p-4 rounded-xl inline-block">
+        <img id="qr-popup-img" src="" alt="Chair QR" class="w-48 h-48" />
+      </div>
+      <p id="qr-popup-code" class="font-mono text-xs text-indigo-400 font-bold"></p>
+      <button onclick="document.getElementById('qr-popup').classList.add('hidden')"
+        class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold">
+        Close
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://bsqfixokaqhvbxzhsjui.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_EOW8eQXhU3jQhyRntuhp4w_K2bCmQth';
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let seats = [];
+    let floorFilter = 'ALL';
+
+    async function loadAdmin() {
+      await db.rpc('release_expired_library_seats');
+      const { data, error } = await db
+        .from('library_seats')
+        .select('*')
+        .order('floor_num', { ascending: true })
+        .order('id', { ascending: true });
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+      seats = data || [];
+      renderAdminTable();
+    }
+
+    window.setFloorFilter = (val) => {
+      floorFilter = val;
+      document.querySelectorAll('.floor-tab').forEach((btn) => {
+        btn.className = 'floor-tab px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-400 border border-slate-800';
+      });
+      document.getElementById(`tab-${val}`).className = 'floor-tab px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white';
+      renderAdminTable();
+    };
+
+    function renderAdminTable() {
+      document.getElementById('stat-total').textContent = seats.length;
+      document.getElementById('stat-vacant').textContent = seats.filter((s) => s.status === 'available').length;
+      document.getElementById('stat-reserved').textContent = seats.filter((s) => s.status === 'reserved').length;
+      document.getElementById('stat-occupied').textContent = seats.filter((s) => s.status === 'occupied').length;
+
+      const filtered = floorFilter === 'ALL' ? seats : seats.filter((s) => s.floor_num === floorFilter);
+      const tbody = document.getElementById('admin-tbody');
+
+      tbody.innerHTML = filtered
+        .map((seat) => {
+          let badge = '<span class="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-bold">Vacant</span>';
+          let timerText = '—';
+
+          if (seat.status === 'reserved') {
+            badge = '<span class="px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-400 font-bold">20m Hold</span>';
+            if (seat.hold_expires_at) {
+              const secs = Math.max(0, Math.floor((new Date(seat.hold_expires_at).getTime() - Date.now()) / 1000));
+              const m = String(Math.floor(secs / 60)).padStart(2, '0');
+              const s = String(secs % 60).padStart(2, '0');
+              timerText = `<span class="text-amber-300 font-bold">${m}:${s} left</span>`;
+            }
+          } else if (seat.status === 'occupied') {
+            badge = '<span class="px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-400 font-bold">Occupied</span>';
+            timerText = seat.occupied_until
+              ? `Until ${new Date(seat.occupied_until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+              : 'Checked In';
+          }
+
+          return `
+            <tr class="hover:bg-slate-800/40">
+              <td class="px-5 py-3.5 font-bold text-white">${seat.seat_label} <span class="text-[10px] text-slate-500 font-mono">(${seat.id})</span></td>
+              <td class="px-5 py-3.5 text-slate-300">Floor 0${seat.floor_num} • ${seat.floor_name}</td>
+              <td class="px-5 py-3.5">${badge}</td>
+              <td class="px-5 py-3.5 text-slate-300">${seat.student_name ? `${seat.student_name} (${seat.reserved_by})` : '—'}</td>
+              <td class="px-5 py-3.5 font-mono text-slate-300">${timerText}</td>
+              <td class="px-5 py-3.5 text-right space-x-2">
+                <button onclick="showChairQR('${seat.id}', 'Floor 0${seat.floor_num} Chair ${seat.seat_label}')"
+                  class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-200 font-semibold transition">
+                  QR
+                </button>
+                ${
+                  seat.status === 'reserved'
+                    ? `<button onclick="testFastExpiry('${seat.id}')" class="px-2.5 py-1 rounded-lg bg-amber-600/20 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/30 font-semibold transition">10s Expiry Test</button>`
+                    : ''
+                }
+                ${
+                  seat.status !== 'available'
+                    ? `<button onclick="forceRelease('${seat.id}')" class="px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 font-semibold transition">Release</button>`
+                    : ''
+                }
+              </td>
+            </tr>
+          `;
+        })
+        .join('');
+    }
+
+    window.showChairQR = (seatId, title) => {
+      const code = `LIB-${seatId}`;
+      document.getElementById('qr-popup-title').textContent = title;
+      document.getElementById('qr-popup-code').textContent = code;
+      document.getElementById('qr-popup-img').src =
+        `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(code)}`;
+      document.getElementById('qr-popup').classList.remove('hidden');
+    };
+
+    window.testFastExpiry = async (seatId) => {
+      const tenSecLater = new Date(Date.now() + 10 * 1000).toISOString();
+      await db.from('library_seats').update({ hold_expires_at: tenSecLater }).eq('id', seatId);
+      loadAdmin();
+    };
+
+    window.forceRelease = async (seatId) => {
+      await db
+        .from('library_seats')
+        .update({
+          status: 'available',
+          reserved_by: null,
+          student_name: null,
+          hold_expires_at: null,
+          occupied_until: null,
+        })
+        .eq('id', seatId);
+      loadAdmin();
+    };
+
+    document.getElementById('btn-reset-all').addEventListener('click', async () => {
+      await db
+        .from('library_seats')
+        .update({
+          status: 'available',
+          reserved_by: null,
+          student_name: null,
+          hold_expires_at: null,
+          occupied_until: null,
+        })
+        .neq('status', 'available');
+      loadAdmin();
+    });
+
+    document.getElementById('btn-cleanup').addEventListener('click', loadAdmin);
+
+    db.channel('m4-admin-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'library_seats' }, loadAdmin)
+      .subscribe();
+
+    // Refresh countdown display every second & sync expired seats every 5 seconds
+    setInterval(renderAdminTable, 1000);
+    setInterval(loadAdmin, 5000);
+    loadAdmin();
+  </script>
+</body>
+<!-- Admin PIN Lock Screen -->
+<div id="admin-lock" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4">
+  <div class="w-full max-w-xs rounded-2xl border border-slate-800 bg-slate-900 p-6 text-center shadow-2xl space-y-4">
+    <span class="px-2.5 py-1 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-widest">
+      Staff Access Only
+    </span>
+    <h2 class="text-lg font-bold text-white">Enter Admin PIN</h2>
+    <input id="admin-pin-input" type="password" placeholder="••••"
+      class="w-full text-center tracking-[0.5em] text-lg font-mono rounded-xl bg-slate-950 border border-slate-800 px-4 py-2.5 focus:border-indigo-500 focus:outline-none" />
+    <p id="pin-error" class="hidden text-xs text-rose-400">Incorrect PIN</p>
+    <button onclick="unlockAdmin()"
+      class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-xs transition">
+      Unlock Control Center
+    </button>
+    <a href="index.html" class="block text-xs text-slate-400 hover:text-white pt-1">← Back to Student Portal</a>
+  </div>
+</div>
+
+<script>
+  function unlockAdmin() {
+    const pin = document.getElementById('admin-pin-input').value;
+    if (pin === '1234') {
+      document.getElementById('admin-lock').classList.add('hidden');
+    } else {
+      document.getElementById('pin-error').classList.remove('hidden');
+    }
+  }
+  document.getElementById('admin-pin-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') unlockAdmin();
+  });
+</script>
+</html>

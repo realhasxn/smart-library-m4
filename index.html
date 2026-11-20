@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Library — Student Seat Booking</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    .scene-3d {
+      perspective: 1300px;
+    }
+    .floor-stage {
+      transform-style: preserve-3d;
+      transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+      animation: floorReveal 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    @keyframes floorReveal {
+      from {
+        opacity: 0;
+        transform: rotateX(72deg) rotateZ(-45deg) scale(0.86) translateY(40px);
+      }
+      to {
+        opacity: 1;
+      }
+    }
+    .chair-unit {
+      transform-style: preserve-3d;
+      transition: transform 0.22s ease, filter 0.22s ease;
+    }
+    .chair-unit.vacant:hover {
+      transform: translateY(-8px) translateZ(16px) scale(1.06);
+      filter: brightness(1.15);
+    }
+    .chair-back {
+      transform: translateZ(14px) rotateX(-25deg);
+    }
+    .chair-seat {
+      transform: translateZ(6px);
+    }
+    .floor-grid-bg {
+      background-image:
+        linear-gradient(to right, rgba(99, 102, 241, 0.08) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(99, 102, 241, 0.08) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-indigo-500">
+
+  <!-- ==================== 1. STUDENT LOGIN VIEW ==================== -->
+  <div id="view-login" class="min-h-screen flex items-center justify-center p-4 bg-[radial-gradient(circle_at_top,#1e1b4b_0%,#020617_65%)]">
+    <div class="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900/85 backdrop-blur-xl p-8 shadow-2xl">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-widest text-indigo-400">M4 Smart Library</span>
+          <h1 class="text-2xl font-bold text-white mt-0.5">Student Login</h1>
+        </div>
+        <a href="admin.html" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-indigo-300">
+          Admin View →
+        </a>
+      </div>
+
+      <p class="text-sm text-slate-400 mb-6">
+        Log in to view vacant library floors, explore interactive 3D chair layouts, and reserve your study seat.
+      </p>
+
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">Student Registration ID</label>
+          <input id="input-reg" type="text" required placeholder="e.g., 12615196"
+            class="w-full rounded-xl bg-slate-950 border border-slate-800 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">Full Name</label>
+          <input id="input-name" type="text" required placeholder="e.g., Shaik Hasan Raza"
+            class="w-full rounded-xl bg-slate-950 border border-slate-800 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none" />
+        </div>
+        <button type="submit"
+          class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-sm transition shadow-lg shadow-indigo-600/30">
+          View Vacant Floors →
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== 2. MAIN APP SHELL ==================== -->
+  <div id="app-shell" class="hidden min-h-screen flex flex-col">
+    <!-- Top Navbar -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-30">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <button id="nav-home-btn" class="font-bold text-base tracking-tight hover:text-indigo-300 transition">
+            Smart Library Seat Finder
+          </button>
+        </div>
+
+        <div class="flex items-center gap-3 sm:gap-4">
+          <a href="admin.html" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-indigo-300 border border-slate-700">
+            Admin View
+          </a>
+          <div class="text-right hidden sm:block">
+            <p id="nav-student-name" class="text-xs font-bold text-white"></p>
+            <p id="nav-student-id" class="text-[11px] text-slate-400"></p>
+          </div>
+          <button id="logout-btn" class="px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-rose-400 hover:bg-slate-800">
+            Logout
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6 flex-1">
+      <!-- Live Toast Notification -->
+      <div id="toast" class="hidden rounded-xl border border-indigo-500/40 bg-indigo-950/90 px-4 py-3 text-sm text-indigo-200 font-medium"></div>
+
+      <!-- Persistent 20-Minute Countdown Banner (Visible across both Floor List & 3D Floor) -->
+      <div id="banner-reserved" class="hidden rounded-2xl border border-amber-500/50 bg-amber-950/30 p-5 flex flex-wrap items-center justify-between gap-4 shadow-lg">
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-widest text-amber-400">Reservation Pending QR Scan</span>
+          <h2 id="banner-reserved-title" class="font-bold text-lg text-white mt-0.5">Seat Reserved</h2>
+          <p class="text-xs text-amber-200/80 mt-0.5">
+            Walk to your chair and scan the QR code before the timer hits 00:00, or the seat will auto-release.
+          </p>
+        </div>
+        <div class="flex items-center gap-3 flex-wrap">
+          <div class="px-4 py-2 rounded-xl bg-slate-950 border border-amber-500/40 text-center min-w-[110px]">
+            <span class="text-[10px] uppercase tracking-wider text-slate-400 block">Arrival Timer</span>
+            <span id="countdown-display" class="text-2xl font-mono font-bold text-amber-400">20:00</span>
+          </div>
+          <button id="btn-open-qr" class="px-5 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-sm shadow-lg shadow-emerald-600/25">
+            Scan Chair QR
+          </button>
+          <button id="btn-cancel-hold" class="px-3.5 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300">
+            Cancel
+          </button>
+        </div>
+      </div>
+
+      <!-- Persistent Checked-In Banner -->
+      <div id="banner-occupied" class="hidden rounded-2xl border border-emerald-500/50 bg-emerald-950/30 p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-widest text-emerald-400">QR Confirmed • Active Session</span>
+          <h2 id="banner-occupied-title" class="font-bold text-lg text-white mt-0.5">Checked In</h2>
+          <p id="banner-occupied-sub" class="text-xs text-emerald-200/80 mt-0.5"></p>
+        </div>
+        <button id="btn-checkout" class="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-bold">
+          Leave Chair & Release Seat
+        </button>
+      </div>
+
+      <!-- ==================== VIEW A: VACANT FLOORS DIRECTORY ==================== -->
+      <section id="view-floors" class="space-y-6">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 class="text-2xl font-bold text-white">Select a Vacant Library Floor</h1>
+            <p class="text-sm text-slate-400 mt-1">
+              Tap any floor below to launch its interactive 3D chair layout and book your seat.
+            </p>
+          </div>
+          <div id="total-vacant-pill" class="px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-bold">
+            Loading live floor availability...
+          </div>
+        </div>
+
+        <div id="floors-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+      </section>
+
+      <!-- ==================== VIEW B: 3D ANIMATED FLOOR PAGE ==================== -->
+      <section id="view-floor-3d" class="hidden space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <button id="btn-back-floors" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200">
+              ← All Floors
+            </button>
+            <div>
+              <h2 id="floor-3d-title" class="text-xl font-bold text-white">Floor 1</h2>
+              <p id="floor-3d-subtitle" class="text-xs text-slate-400">Click any green vacant chair to book immediately</p>
+            </div>
+          </div>
+
+          <!-- 3D Camera Angle Controls -->
+          <div class="flex flex-wrap items-center gap-3 bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl text-xs text-slate-300">
+            <button onclick="setCameraPreset(54, -28)" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-indigo-600 font-medium transition">3D Iso</button>
+            <button onclick="setCameraPreset(12, 0)" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-indigo-600 font-medium transition">Top View</button>
+            <label class="flex items-center gap-1.5">
+              Tilt <input id="slider-tilt" type="range" min="10" max="68" value="54" class="w-16 accent-indigo-500 cursor-pointer" />
+            </label>
+            <label class="flex items-center gap-1.5">
+              Spin <input id="slider-spin" type="range" min="-60" max="60" value="-28" class="w-16 accent-indigo-500 cursor-pointer" />
+            </label>
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex flex-wrap items-center gap-5 text-xs text-slate-400">
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-emerald-500"></span> Vacant Chair (Click to Book)</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-amber-500"></span> 20-Min Hold (En Route)</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-rose-500"></span> Occupied</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-blue-500"></span> Your Chair</span>
+        </div>
+
+        <!-- 3D Animated Room Canvas -->
+        <div class="scene-3d relative h-[500px] w-full flex items-center justify-center overflow-hidden rounded-3xl border border-slate-800 bg-[radial-gradient(circle_at_center,#1e293b_0%,#020617_85%)] shadow-2xl">
+          <div id="floor-stage" class="floor-stage floor-grid-bg relative p-8 sm:p-10 rounded-3xl border-2 border-indigo-500/35 bg-slate-900/90 shadow-[0_45px_90px_rgba(0,0,0,0.9)]"
+            style="transform: rotateX(54deg) rotateZ(-28deg);">
+
+            <!-- Floor Wall / Entrance Label -->
+            <div class="flex items-center justify-between border-b border-dashed border-slate-700 pb-3 mb-7 text-[11px] uppercase tracking-widest text-slate-400">
+              <span>Main Entrance & QR Gate</span>
+              <span id="stage-floor-badge" class="text-indigo-400 font-bold">FLOOR 01</span>
+            </div>
+
+            <!-- Row A Chairs -->
+            <div id="row-a-chairs" class="grid grid-cols-6 gap-5 sm:gap-7" style="transform-style: preserve-3d;"></div>
+
+            <!-- Central Library Walkway Aisle -->
+            <div class="my-6 py-2 rounded-lg bg-slate-950/70 border border-dashed border-slate-800 text-center text-[10px] uppercase tracking-[0.25em] text-slate-500">
+              Central Walkway Aisle
+            </div>
+
+            <!-- Row B Chairs -->
+            <div id="row-b-chairs" class="grid grid-cols-6 gap-5 sm:gap-7" style="transform-style: preserve-3d;"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ==================== 3. CONFIRM CHAIR BOOKING MODAL ==================== -->
+  <div id="modal-book" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-950 p-6 shadow-2xl space-y-5">
+      <div>
+        <span class="text-[10px] font-bold uppercase tracking-widest text-indigo-400">Confirm Chair Reservation</span>
+        <h3 id="modal-book-title" class="text-xl font-bold text-white mt-1">Chair A1</h3>
+        <p id="modal-book-sub" class="text-xs text-slate-400 mt-1"></p>
+      </div>
+      <div class="rounded-xl bg-amber-950/35 border border-amber-500/30 p-3.5 text-xs text-amber-200 space-y-1">
+        <p class="font-bold">20-Minute Arrival Rule:</p>
+        <p>Once booked, reach this chair and scan its QR code within 20 minutes. Unscanned seats auto-release.</p>
+      </div>
+      <div class="flex gap-3">
+        <button id="btn-close-book" class="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold">
+          Cancel
+        </button>
+        <button id="btn-confirm-book" class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold shadow-lg shadow-indigo-600/25">
+          Book Chair Now
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 4. QR SCAN & DURATION MODAL ==================== -->
+  <div id="modal-qr" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div class="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-950 p-6 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+        <div>
+          <h3 class="font-bold text-base text-white">Scan Chair QR Code</h3>
+          <p id="qr-subtitle" class="text-xs text-slate-400"></p>
+        </div>
+        <button id="btn-close-qr" class="text-slate-400 hover:text-white text-sm">✕</button>
+      </div>
+
+      <!-- Step 1: Scan QR -->
+      <div id="qr-step-1" class="space-y-4">
+        <div id="qr-reader" class="w-full rounded-xl overflow-hidden border border-slate-800 bg-slate-900 min-h-[120px]"></div>
+        <p id="camera-note" class="hidden text-[11px] text-slate-400 text-center">
+          Live camera requires HTTPS or VS Code Live Server. Use the button or desk tag below for instant verification.
+        </p>
+
+        <button id="btn-sim-qr" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-xs transition">
+          Simulate Chair QR Scan
+        </button>
+
+        <div class="flex gap-2">
+          <input id="input-qr-code" type="text" placeholder="Or type QR tag (e.g., LIB-F1-A1)"
+            class="flex-1 rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none" />
+          <button id="btn-verify-qr" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold">
+            Verify
+          </button>
+        </div>
+        <p id="qr-error" class="hidden text-xs text-rose-400"></p>
+      </div>
+
+      <!-- Step 2: Select Stay Duration -->
+      <div id="qr-step-2" class="hidden space-y-4">
+        <div class="rounded-xl bg-emerald-950/50 border border-emerald-600/40 px-3.5 py-2.5 text-xs text-emerald-300 font-semibold">
+          ✓ Chair QR Verified! Select how long you will stay:
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <button data-hrs="1" class="dur-opt p-3.5 rounded-xl border border-slate-800 bg-slate-900 text-left">
+            <div class="font-bold text-sm">1 Hour</div>
+            <div class="text-[11px] text-slate-400">Short reading</div>
+          </button>
+          <button data-hrs="2" class="dur-opt p-3.5 rounded-xl border border-indigo-500 bg-indigo-600/20 text-left">
+            <div class="font-bold text-sm">2 Hours</div>
+            <div class="text-[11px] text-slate-400">Standard session</div>
+          </button>
+          <button data-hrs="3" class="dur-opt p-3.5 rounded-xl border border-slate-800 bg-slate-900 text-left">
+            <div class="font-bold text-sm">3 Hours</div>
+            <div class="text-[11px] text-slate-400">Deep study block</div>
+          </button>
+          <button data-hrs="4" class="dur-opt p-3.5 rounded-xl border border-slate-800 bg-slate-900 text-left">
+            <div class="font-bold text-sm">4 Hours</div>
+            <div class="text-[11px] text-slate-400">Exam marathon</div>
+          </button>
+        </div>
+
+        <button id="btn-confirm-checkin" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-sm shadow-lg shadow-emerald-600/25">
+          Confirm Seat for 2 Hours
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 5. APPLICATION LOGIC ==================== -->
+  <script>
+    const SUPABASE_URL = 'https://bsqfixokaqhvbxzhsjui.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_EOW8eQXhU3jQhyRntuhp4w_K2bCmQth';
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let student = JSON.parse(localStorage.getItem('m4_student') || 'null');
+    let allSeats = [];
+    let activeFloorNum = null;
+    let pendingChair = null;
+    let chosenHours = 2;
+    let countdownTimer = null;
+    let qrScanner = null;
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 5000);
+    }
+
+    function getMySeat() {
+      if (!student) return null;
+      return allSeats.find((s) => s.reserved_by === student.regId && s.status !== 'available') || null;
+    }
+
+    // 1. Auth Flow
+    function bootApp() {
+      if (!student) {
+        document.getElementById('view-login').classList.remove('hidden');
+        document.getElementById('app-shell').classList.add('hidden');
+        return;
+      }
+      document.getElementById('view-login').classList.add('hidden');
+      document.getElementById('app-shell').classList.remove('hidden');
+      document.getElementById('nav-student-name').textContent = student.name;
+      document.getElementById('nav-student-id').textContent = `ID: ${student.regId}`;
+      fetchSeats();
+      setupRealtime();
+    }
+
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const regId = document.getElementById('input-reg').value.trim();
+      const name = document.getElementById('input-name').value.trim();
+      if (!regId || !name) return;
+      student = { regId, name };
+      localStorage.setItem('m4_student', JSON.stringify(student));
+      bootApp();
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      localStorage.removeItem('m4_student');
+      student = null;
+      activeFloorNum = null;
+      bootApp();
+    });
+
+    document.getElementById('nav-home-btn').addEventListener('click', showFloorsDirectory);
+    document.getElementById('btn-back-floors').addEventListener('click', showFloorsDirectory);
+
+    // 2. Fetch Seats + Server Expiry Cleanup
+    async function fetchSeats() {
+      await db.rpc('release_expired_library_seats');
+      const { data, error } = await db
+        .from('library_seats')
+        .select('*')
+        .order('floor_num', { ascending: true })
+        .order('id', { ascending: true });
+
+      if (error) {
+        showToast('Database error: ' + error.message);
+        return;
+      }
+      allSeats = data || [];
+      renderFloorsDirectory();
+      if (activeFloorNum !== null) render3DFloor(activeFloorNum);
+      renderMyReservationBanners();
+    }
+
+    let realtimeBound = false;
+    function setupRealtime() {
+      if (realtimeBound) return;
+      realtimeBound = true;
+      db.channel('m4-student-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'library_seats' }, fetchSeats)
+        .subscribe();
+      setInterval(fetchSeats, 10000);
+    }
+
+    // 3. View A: Vacant Floors List
+    function showFloorsDirectory() {
+      activeFloorNum = null;
+      document.getElementById('view-floor-3d').classList.add('hidden');
+      document.getElementById('view-floors').classList.remove('hidden');
+      renderFloorsDirectory();
+    }
+
+    function renderFloorsDirectory() {
+      const grid = document.getElementById('floors-grid');
+      const totalVacant = allSeats.filter((s) => s.status === 'available').length;
+      document.getElementById('total-vacant-pill').textContent = `${totalVacant} / ${allSeats.length} Total Chairs Vacant`;
+
+      const floorNums = [...new Set(allSeats.map((s) => s.floor_num))];
+      grid.innerHTML = floorNums
+        .map((fNum) => {
+          const floorSeats = allSeats.filter((s) => s.floor_num === fNum);
+          const vacant = floorSeats.filter((s) => s.status === 'available').length;
+          const reserved = floorSeats.filter((s) => s.status === 'reserved').length;
+          const occupied = floorSeats.filter((s) => s.status === 'occupied').length;
+          const pct = Math.round((vacant / floorSeats.length) * 100);
+          const name = floorSeats[0]?.floor_name || `Floor ${fNum}`;
+          const isFull = vacant === 0;
+
+          return `
+            <div onclick="openFloor3D(${fNum})"
+              class="group cursor-pointer rounded-3xl border ${isFull ? 'border-rose-500/30 bg-slate-900/50' : 'border-slate-800 hover:border-indigo-500 bg-slate-900/80'} p-6 transition-all duration-300 hover:-translate-y-1.5 shadow-xl">
+              <div class="flex items-center justify-between mb-4">
+                <span class="px-3 py-1 rounded-xl bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 text-xs font-bold">
+                  FLOOR 0${fNum}
+                </span>
+                <span class="px-2.5 py-1 rounded-full text-xs font-bold ${isFull ? 'bg-rose-500/15 text-rose-400' : 'bg-emerald-500/15 text-emerald-400'}">
+                  ${isFull ? 'Full' : `${vacant} Vacant`}
+                </span>
+              </div>
+
+              <h3 class="text-xl font-bold text-white group-hover:text-indigo-300 transition">${name}</h3>
+              <p class="text-xs text-slate-400 mt-1">${floorSeats.length} Smart Chairs • Power & Wi-Fi</p>
+
+              <!-- Live Availability Bar -->
+              <div class="mt-5">
+                <div class="flex justify-between text-[11px] text-slate-400 mb-1.5">
+                  <span>Availability</span>
+                  <span class="font-bold text-slate-200">${pct}% Free</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                  <div class="h-full rounded-full ${isFull ? 'bg-rose-500' : 'bg-emerald-500'}" style="width: ${pct}%"></div>
+                </div>
+              </div>
+
+              <div class="mt-5 pt-4 border-t border-slate-800 flex items-center justify-between text-xs">
+                <span class="text-slate-400">${reserved} En Route • ${occupied} Busy</span>
+                <span class="font-bold text-indigo-400 group-hover:translate-x-1 transition">Enter 3D View →</span>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    // 4. View B: Animated 3D Floor with Chairs
+    window.openFloor3D = (fNum) => {
+      activeFloorNum = fNum;
+      document.getElementById('view-floors').classList.add('hidden');
+      document.getElementById('view-floor-3d').classList.remove('hidden');
+
+      // Re-trigger smooth 3D entrance animation
+      const stage = document.getElementById('floor-stage');
+      stage.style.animation = 'none';
+      stage.offsetHeight;
+      stage.style.animation = null;
+
+      render3DFloor(fNum);
+    };
+
+    function render3DFloor(fNum) {
+      const floorSeats = allSeats.filter((s) => s.floor_num === fNum);
+      const name = floorSeats[0]?.floor_name || `Floor ${fNum}`;
+      const vacant = floorSeats.filter((s) => s.status === 'available').length;
+
+      document.getElementById('floor-3d-title').textContent = `Floor 0${fNum} — ${name}`;
+      document.getElementById('floor-3d-subtitle').textContent = `${vacant} of ${floorSeats.length} chairs available • Tap any green chair to book`;
+      document.getElementById('stage-floor-badge').textContent = `FLOOR 0${fNum} • ${name.toUpperCase()}`;
+
+      const rowA = floorSeats.filter((s) => s.seat_label.startsWith('A'));
+      const rowB = floorSeats.filter((s) => s.seat_label.startsWith('B'));
+
+      const renderChairHTML = (seat) => {
+        const isMine = student && seat.reserved_by === student.regId && seat.status !== 'available';
+        let chairTheme = 'bg-emerald-500 border-emerald-300 shadow-[0_12px_24px_rgba(16,185,129,0.45)] cursor-pointer vacant';
+        let backTheme = 'bg-emerald-400 border-emerald-200';
+        let statusTag = 'Vacant';
+
+        if (isMine) {
+          chairTheme = 'bg-blue-500 border-blue-300 shadow-[0_14px_28px_rgba(59,130,246,0.7)]';
+          backTheme = 'bg-blue-400 border-blue-200';
+          statusTag = 'Yours';
+        } else if (seat.status === 'reserved') {
+          chairTheme = 'bg-amber-500 border-amber-300 shadow-[0_8px_18px_rgba(245,158,11,0.4)] cursor-not-allowed opacity-90';
+          backTheme = 'bg-amber-400 border-amber-200';
+          statusTag = '20m Hold';
+        } else if (seat.status === 'occupied') {
+          chairTheme = 'bg-rose-600 border-rose-400 shadow-[0_8px_18px_rgba(244,63,94,0.35)] cursor-not-allowed opacity-85';
+          backTheme = 'bg-rose-500 border-rose-300';
+          statusTag = 'Busy';
+        }
+
+        return `
+          <div onclick="onChairClick('${seat.id}')" class="chair-unit ${seat.status === 'available' ? 'vacant' : ''} flex flex-col items-center">
+            <!-- 3D Study Desk -->
+            <div class="w-16 h-6 rounded-md bg-slate-800 border border-slate-600 shadow-lg mb-2 flex items-center justify-center relative">
+              <div class="w-7 h-1.5 rounded-full bg-slate-600"></div>
+              <div class="absolute -bottom-1.5 inset-x-0.5 h-1.5 rounded-b bg-slate-950"></div>
+            </div>
+            <!-- 3D Chair Backrest + Cushion -->
+            <div class="relative flex flex-col items-center">
+              <div class="chair-seat w-13 sm:w-14 h-12 rounded-xl border ${chairTheme} flex flex-col items-center justify-center text-white font-bold">
+                <span class="text-xs leading-none">${seat.seat_label}</span>
+                <span class="text-[8px] font-semibold opacity-95 mt-0.5">${statusTag}</span>
+              </div>
+              <div class="chair-back w-12 h-3 -mt-1.5 rounded-md border ${backTheme} shadow-md"></div>
+            </div>
+          </div>
+        `;
+      };
+
+      document.getElementById('row-a-chairs').innerHTML = rowA.map(renderChairHTML).join('');
+      document.getElementById('row-b-chairs').innerHTML = rowB.map(renderChairHTML).join('');
+    }
+
+    // 5. Click Chair -> Confirm Booking -> Start 20-Min Hold
+    window.onChairClick = (seatId) => {
+      const mySeat = getMySeat();
+      if (mySeat) {
+        showToast(`You already hold Chair ${mySeat.seat_label} on Floor 0${mySeat.floor_num}.`);
+        return;
+      }
+      const seat = allSeats.find((s) => s.id === seatId);
+      if (!seat || seat.status !== 'available') return;
+
+      pendingChair = seat;
+      document.getElementById('modal-book-title').textContent = `Chair ${seat.seat_label} (Floor 0${seat.floor_num})`;
+      document.getElementById('modal-book-sub').textContent = `${seat.floor_name} • Code: LIB-${seat.id}`;
+      document.getElementById('modal-book').classList.remove('hidden');
+    };
+
+    document.getElementById('btn-close-book').addEventListener('click', () => {
+      pendingChair = null;
+      document.getElementById('modal-book').classList.add('hidden');
+    });
+
+    document.getElementById('btn-confirm-book').addEventListener('click', async () => {
+      if (!pendingChair || !student) return;
+      const holdUntil = new Date(Date.now() + 20 * 60 * 1000).toISOString();
+
+      const { error } = await db
+        .from('library_seats')
+        .update({
+          status: 'reserved',
+          reserved_by: student.regId,
+          student_name: student.name,
+          hold_expires_at: holdUntil,
+        })
+        .eq('id', pendingChair.id)
+        .eq('status', 'available');
+
+      document.getElementById('modal-book').classList.add('hidden');
+      if (error) {
+        showToast('Could not book chair: ' + error.message);
+      } else {
+        showToast(`Booked Chair ${pendingChair.seat_label} on Floor 0${pendingChair.floor_num}! Reach it & scan QR within 20 minutes.`);
+        pendingChair = null;
+        fetchSeats();
+      }
+    });
+
+    // 6. 20-Minute Countdown & Auto-Release
+    function renderMyReservationBanners() {
+      const mySeat = getMySeat();
+      const resBanner = document.getElementById('banner-reserved');
+      const occBanner = document.getElementById('banner-occupied');
+
+      if (countdownTimer) clearInterval(countdownTimer);
+
+      if (!mySeat) {
+        resBanner.classList.add('hidden');
+        occBanner.classList.add('hidden');
+        return;
+      }
+
+      if (mySeat.status === 'reserved' && mySeat.hold_expires_at) {
+        occBanner.classList.add('hidden');
+        resBanner.classList.remove('hidden');
+        document.getElementById('banner-reserved-title').textContent =
+          `Floor 0${mySeat.floor_num} • Chair ${mySeat.seat_label} Reserved`;
+
+        const tick = async () => {
+          const secs = Math.floor((new Date(mySeat.hold_expires_at).getTime() - Date.now()) / 1000);
+          if (secs <= 0) {
+            clearInterval(countdownTimer);
+            await releaseSeat(mySeat.id);
+            showToast(`20-minute timer expired! Chair ${mySeat.seat_label} was auto-released and is vacant again.`);
+          } else {
+            const m = String(Math.floor(secs / 60)).padStart(2, '0');
+            const s = String(secs % 60).padStart(2, '0');
+            document.getElementById('countdown-display').textContent = `${m}:${s}`;
+          }
+        };
+        tick();
+        countdownTimer = setInterval(tick, 1000);
+      } else if (mySeat.status === 'occupied') {
+        resBanner.classList.add('hidden');
+        occBanner.classList.remove('hidden');
+        document.getElementById('banner-occupied-title').textContent =
+          `Checked In: Floor 0${mySeat.floor_num} — Chair ${mySeat.seat_label} (${mySeat.floor_name})`;
+        const until = mySeat.occupied_until
+          ? new Date(mySeat.occupied_until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : 'checkout';
+        document.getElementById('banner-occupied-sub').textContent = `Confirmed via QR • Reserved until ${until}`;
+      }
+    }
+
+    async function releaseSeat(seatId) {
+      await db
+        .from('library_seats')
+        .update({
+          status: 'available',
+          reserved_by: null,
+          student_name: null,
+          hold_expires_at: null,
+          occupied_until: null,
+        })
+        .eq('id', seatId);
+      fetchSeats();
+    }
+
+    document.getElementById('btn-cancel-hold').addEventListener('click', () => {
+      const s = getMySeat();
+      if (s) releaseSeat(s.id);
+    });
+    document.getElementById('btn-checkout').addEventListener('click', () => {
+      const s = getMySeat();
+      if (s) releaseSeat(s.id);
+    });
+
+    // 7. QR Code Scanner & Duration Selection
+    document.getElementById('btn-open-qr').addEventListener('click', () => {
+      const s = getMySeat();
+      if (!s) return;
+      const expected = `LIB-${s.id}`;
+      document.getElementById('qr-subtitle').textContent = `Floor 0${s.floor_num} Chair ${s.seat_label} • Expected Tag: ${expected}`;
+      document.getElementById('btn-sim-qr').textContent = `Simulate QR Scan (${expected})`;
+      document.getElementById('qr-step-1').classList.remove('hidden');
+      document.getElementById('qr-step-2').classList.add('hidden');
+      document.getElementById('qr-error').classList.add('hidden');
+      document.getElementById('camera-note').classList.add('hidden');
+      document.getElementById('modal-qr').classList.remove('hidden');
+
+      try {
+        qrScanner = new Html5Qrcode('qr-reader');
+        qrScanner
+          .start({ facingMode: 'environment' }, { fps: 10, qrbox: 180 }, (decoded) => verifyQR(decoded))
+          .catch(() => {
+            document.getElementById('camera-note').classList.remove('hidden');
+          });
+      } catch (e) {
+        document.getElementById('camera-note').classList.remove('hidden');
+      }
+    });
+
+    function closeQrModal() {
+      document.getElementById('modal-qr').classList.add('hidden');
+      if (qrScanner) {
+        qrScanner.stop().catch(() => {});
+        qrScanner = null;
+      }
+    }
+
+    document.getElementById('btn-close-qr').addEventListener('click', closeQrModal);
+
+    function verifyQR(input) {
+      const s = getMySeat();
+      if (!s) return;
+      const code = input.trim().toUpperCase();
+      const expected = `LIB-${s.id.toUpperCase()}`;
+
+      if (code === expected || code === s.id.toUpperCase() || code === s.seat_label.toUpperCase()) {
+        if (qrScanner) {
+          qrScanner.stop().catch(() => {});
+          qrScanner = null;
+        }
+        document.getElementById('qr-step-1').classList.add('hidden');
+        document.getElementById('qr-step-2').classList.remove('hidden');
+      } else {
+        const err = document.getElementById('qr-error');
+        err.textContent = `Wrong QR code! Scan chair tag: ${expected}`;
+        err.classList.remove('hidden');
+      }
+    }
+
+    document.getElementById('btn-sim-qr').addEventListener('click', () => {
+      const s = getMySeat();
+      if (s) verifyQR(`LIB-${s.id}`);
+    });
+    document.getElementById('btn-verify-qr').addEventListener('click', () => {
+      verifyQR(document.getElementById('input-qr-code').value);
+    });
+
+    document.querySelectorAll('.dur-opt').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        chosenHours = Number(btn.dataset.hrs);
+        document.querySelectorAll('.dur-opt').forEach((b) => {
+          b.className = 'dur-opt p-3.5 rounded-xl border border-slate-800 bg-slate-900 text-left';
+        });
+        btn.className = 'dur-opt p-3.5 rounded-xl border border-indigo-500 bg-indigo-600/20 text-left';
+        document.getElementById('btn-confirm-checkin').textContent = `Confirm Seat for ${chosenHours} Hour(s)`;
+      });
+    });
+
+    document.getElementById('btn-confirm-checkin').addEventListener('click', async () => {
+      const s = getMySeat();
+      if (!s) return;
+      const occupiedUntil = new Date(Date.now() + chosenHours * 60 * 60 * 1000).toISOString();
+
+      const { error } = await db
+        .from('library_seats')
+        .update({
+          status: 'occupied',
+          hold_expires_at: null,
+          occupied_until: occupiedUntil,
+        })
+        .eq('id', s.id);
+
+      if (!error) {
+        closeQrModal();
+        showToast(`Confirmed! Chair ${s.seat_label} is locked for ${chosenHours} hour(s).`);
+        fetchSeats();
+      }
+    });
+
+    // 8. 3D Camera Controls
+    const stageEl = document.getElementById('floor-stage');
+    const tiltSlider = document.getElementById('slider-tilt');
+    const spinSlider = document.getElementById('slider-spin');
+
+    function applyCamera() {
+      stageEl.style.transform = `rotateX(${tiltSlider.value}deg) rotateZ(${spinSlider.value}deg)`;
+    }
+    window.setCameraPreset = (tilt, spin) => {
+      tiltSlider.value = tilt;
+      spinSlider.value = spin;
+      applyCamera();
+    };
+    tiltSlider.addEventListener('input', applyCamera);
+    spinSlider.addEventListener('input', applyCamera);
+
+    bootApp();
+  </script>
+</body>
+</html>
