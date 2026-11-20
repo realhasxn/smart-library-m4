@@ -243,14 +243,13 @@
     loadAdmin();
   </script>
 </body>
-<!-- Admin PIN Lock Screen -->
 <div id="admin-lock" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4">
   <div class="w-full max-w-xs rounded-2xl border border-slate-800 bg-slate-900 p-6 text-center shadow-2xl space-y-4">
     <span class="px-2.5 py-1 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-widest">
       Staff Access Only
     </span>
     <h2 class="text-lg font-bold text-white">Enter Admin PIN</h2>
-    <input id="admin-pin-input" type="password" placeholder="••••"
+    <input id="admin-pin-input" type="password" placeholder="1234"
       class="w-full text-center tracking-[0.5em] text-lg font-mono rounded-xl bg-slate-950 border border-slate-800 px-4 py-2.5 focus:border-indigo-500 focus:outline-none" />
     <p id="pin-error" class="hidden text-xs text-rose-400">Incorrect PIN</p>
     <button onclick="unlockAdmin()"
@@ -263,8 +262,8 @@
 
 <script>
   function unlockAdmin() {
-    const pin = document.getElementById('admin-pin-input').value;
-    if (pin === '1234') {
+  const pin = document.getElementById('admin-pin-input').value;
+    if (pin === '5555') {
       document.getElementById('admin-lock').classList.add('hidden');
     } else {
       document.getElementById('pin-error').classList.remove('hidden');
