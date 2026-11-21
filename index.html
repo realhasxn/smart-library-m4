@@ -5,195 +5,84 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AETHER // Smart Library — Precision Seat Architecture</title>
 
-  <!-- Typography matching Koenigsegg's wide geometric & editorial hierarchy -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Michroma&family=Syncopate:wght@400;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
 
-  <!-- Core Libraries: Tailwind, Supabase, QR Scanner, GSAP + ScrollTrigger, Lenis Smooth Scroll -->
+  <!-- Core UI, Database, QR, Motion & On-Device Edge AI (TensorFlow.js + COCO-SSD) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
   <script src="https://unpkg.com/lenis@1.1.14/dist/lenis.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
 
   <style>
-    :root {
-      --k-black: #000000;
-      --k-white: #ffffff;
-      --k-slate: #5c6b6b;
-      --k-accent: #e11d48;
-    }
+    html { background: #000000; color: #ffffff; font-family: 'Inter', sans-serif; }
+    body { overflow-x: hidden; background: #000000; }
+    .font-wide { font-family: 'Syncopate', sans-serif; text-transform: uppercase; letter-spacing: 0.04em; }
+    .font-display { font-family: 'Syne', sans-serif; text-transform: uppercase; letter-spacing: -0.02em; }
+    .font-tech { font-family: 'Michroma', sans-serif; text-transform: uppercase; letter-spacing: 0.14em; }
 
-    html {
-      background: #000000;
-      color: #ffffff;
-      font-family: 'Inter', sans-serif;
-    }
+    #main-nav { transition: background-color 0.45s cubic-bezier(0.22, 1, 0.36, 1), backdrop-filter 0.45s ease; }
+    #main-nav.scrolled-slate { background-color: rgba(92, 107, 107, 0.94); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
 
-    body {
-      overflow-x: hidden;
-      background: #000000;
-    }
-
-    .font-wide {
-      font-family: 'Syncopate', sans-serif;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    .font-display {
-      font-family: 'Syne', sans-serif;
-      text-transform: uppercase;
-      letter-spacing: -0.02em;
-    }
-
-    .font-tech {
-      font-family: 'Michroma', sans-serif;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-    }
-
-    /* Koenigsegg Sticky Header Transition */
-    #main-nav {
-      transition: background-color 0.45s cubic-bezier(0.22, 1, 0.36, 1), backdrop-filter 0.45s ease, border-color 0.45s ease;
-    }
-    #main-nav.scrolled-slate {
-      background-color: rgba(92, 107, 107, 0.94);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-    }
-
-    /* Koenigsegg Chamfered Octagonal Outline Button */
     .k-btn {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.85rem;
-      padding: 0.9rem 1.85rem;
-      font-size: 0.72rem;
-      font-weight: 500;
-      letter-spacing: 0.06em;
-      cursor: pointer;
+      position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 0.75rem;
+      padding: 0.85rem 1.65rem; font-size: 0.72rem; font-weight: 500; letter-spacing: 0.06em; cursor: pointer;
       transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-      clip-path: polygon(11px 0, calc(100% - 11px) 0, 100% 11px, 100% calc(100% - 11px), calc(100% - 11px) 100%, 11px 100%, 0 calc(100% - 11px), 0 11px);
+      clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px);
     }
-    .k-btn-dark {
-      background: rgba(255, 255, 255, 0.06);
-      color: #ffffff;
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
-    }
-    .k-btn-dark:hover {
-      background: #ffffff;
-      color: #000000;
-      box-shadow: inset 0 0 0 1px #ffffff;
-    }
-    .k-btn-light {
-      background: transparent;
-      color: #000000;
-      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
-    }
-    .k-btn-light:hover {
-      background: #000000;
-      color: #ffffff;
-      box-shadow: inset 0 0 0 1px #000000;
-    }
-    .k-btn .arrow {
-      transition: transform 0.3s ease;
-    }
-    .k-btn:hover .arrow {
-      transform: translateX(5px);
-    }
+    .k-btn-dark { background: rgba(255, 255, 255, 0.06); color: #ffffff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45); }
+    .k-btn-dark:hover { background: #ffffff; color: #000000; box-shadow: inset 0 0 0 1px #ffffff; }
+    .k-btn-light { background: transparent; color: #000000; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3); }
+    .k-btn-light:hover { background: #000000; color: #ffffff; box-shadow: inset 0 0 0 1px #000000; }
+    .k-btn .arrow { transition: transform 0.3s ease; }
+    .k-btn:hover .arrow { transform: translateX(5px); }
 
-    /* Cinematic B-Roll Ken Burns Fallback Animation */
     @keyframes kenBurnsSlow {
       0% { transform: scale(1.02) translate(0%, 0%); }
       50% { transform: scale(1.12) translate(-1.5%, -1%); }
       100% { transform: scale(1.02) translate(0%, 0%); }
     }
-    .broll-motion {
-      animation: kenBurnsSlow 22s ease-in-out infinite;
-    }
+    .broll-motion { animation: kenBurnsSlow 22s ease-in-out infinite; }
 
-    /* Koenigsegg Horizontal Model-Bar Active Progress Line */
-    .floor-nav-item {
-      position: relative;
-      padding-bottom: 14px;
-      color: rgba(255, 255, 255, 0.48);
-      transition: color 0.3s ease;
-    }
-    .floor-nav-item:hover,
-    .floor-nav-item.active {
-      color: #ffffff;
-    }
+    .floor-nav-item { position: relative; padding-bottom: 14px; color: rgba(255, 255, 255, 0.48); transition: color 0.3s ease; }
+    .floor-nav-item:hover, .floor-nav-item.active { color: #ffffff; }
     .floor-nav-item::after {
-      content: '';
-      position: absolute;
-      left: 0;
-      bottom: -1px;
-      height: 2px;
-      width: 0%;
-      background: #ffffff;
-      transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+      content: ''; position: absolute; left: 0; bottom: -1px; height: 2px; width: 0%;
+      background: #ffffff; transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
     }
-    .floor-nav-item.active::after {
-      width: 100%;
-    }
+    .floor-nav-item.active::after { width: 100%; }
 
-    /* 3D Architectural Floor Engine */
-    .scene-3d {
-      perspective: 1450px;
-    }
-    .floor-stage {
-      transform-style: preserve-3d;
-      transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
-    }
+    .scene-3d { perspective: 1450px; }
+    .floor-stage { transform-style: preserve-3d; transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1); }
     .studio-grid {
-      background-image:
-        linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+      background-image: linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
       background-size: 32px 32px;
     }
-    .chair-pod {
-      transform-style: preserve-3d;
-      transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), filter 0.25s ease;
-    }
-    .chair-pod.vacant:hover {
-      transform: translateY(-10px) translateZ(18px) scale(1.07);
-      filter: brightness(1.18);
-    }
-    .chair-cushion {
-      transform: translateZ(7px);
-    }
-    .chair-back {
-      transform: translateZ(16px) rotateX(-28deg);
-    }
-
-    /* Image Reveal Clip Mask */
-    .reveal-frame {
-      clip-path: inset(0% 0% 0% 0%);
-      will-change: clip-path, transform;
-    }
+    .chair-pod { transform-style: preserve-3d; transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), filter 0.25s ease; }
+    .chair-pod.vacant:hover { transform: translateY(-10px) translateZ(18px) scale(1.07); filter: brightness(1.18); }
+    .chair-cushion { transform: translateZ(7px); }
+    .chair-back { transform: translateZ(16px) rotateX(-28deg); }
+    .reveal-frame { clip-path: inset(0% 0% 0% 0%); will-change: clip-path, transform; }
   </style>
 </head>
 <body class="bg-black text-white selection:bg-white selection:text-black">
 
-  <!-- ==================== STICKY KOENIGSEGG HEADER ==================== -->
+  <!-- ==================== STICKY HEADER ==================== -->
   <header id="main-nav" class="fixed top-0 inset-x-0 z-40 h-16 px-5 sm:px-10 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent">
-    <!-- Crest Logo -->
-    <a href="#hero" class="flex items-center gap-3 group">
+    <a href="#hero" class="flex items-center gap-3">
       <div class="w-7 h-8 border border-white/80 flex items-center justify-center text-[10px] font-bold tracking-tighter"
-           style="clip-path: polygon(0 0, 100% 0, 100% 72%, 50% 100%, 0 72%);">
-        M4
-      </div>
+           style="clip-path: polygon(0 0, 100% 0, 100% 72%, 50% 100%, 0 72%);">M4</div>
       <span class="font-tech text-[11px] sm:text-xs tracking-[0.22em] text-white">AETHER LIBRARY</span>
     </a>
 
-    <!-- Live Status & Navigation Controls -->
     <div class="flex items-center gap-4 sm:gap-6">
-      <div id="header-live-pill" class="hidden md:flex items-center gap-2 text-[10px] font-tech tracking-widest text-white/80">
+      <div class="hidden md:flex items-center gap-2 text-[10px] font-tech tracking-widest text-white/80">
         <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
         <span id="header-vacant-count">SYNCING TELEMETRY...</span>
       </div>
@@ -207,71 +96,111 @@
         Admin
       </a>
 
-      <!-- Minimalist Two-Line Menu Trigger -->
-      <button onclick="scrollToSection('#deck-3d')" aria-label="Jump to 3D Floor" class="flex flex-col gap-1.5 p-1 group">
-        <span class="w-6 h-[1.5px] bg-white transition-transform group-hover:translate-x-0.5"></span>
-        <span class="w-6 h-[1.5px] bg-white transition-transform group-hover:-translate-x-0.5"></span>
+      <button onclick="scrollToSection('#deck-3d')" aria-label="Jump to 3D Floor" class="flex flex-col gap-1.5 p-1">
+        <span class="w-6 h-[1.5px] bg-white"></span>
+        <span class="w-6 h-[1.5px] bg-white"></span>
       </button>
     </div>
   </header>
 
-  <!-- ==================== FLOATING TOAST & PERSISTENT 20-MIN TELEMETRY DOCK ==================== -->
+  <!-- ==================== TOAST NOTIFICATION ==================== -->
   <div id="toast-bar" class="hidden fixed top-20 right-5 sm:right-10 z-50 max-w-sm bg-black/95 border border-white/30 px-5 py-3.5 text-xs tracking-wide text-white shadow-2xl backdrop-blur-md"></div>
 
-  <!-- Fixed Bottom Telemetry Bar when Student has an Active Reservation or Check-In -->
-  <div id="active-session-dock" class="hidden fixed bottom-5 inset-x-4 sm:inset-x-auto sm:right-8 sm:left-8 max-w-4xl mx-auto z-40 bg-black/92 backdrop-blur-xl border border-white/25 px-5 sm:px-7 py-4 shadow-[0_25px_60px_rgba(0,0,0,0.9)]">
-    <!-- Reserved (20-Min Countdown) State -->
+  <!-- ==================== PERSISTENT SESSION & THIRD EYE AI DOCK ==================== -->
+  <div id="active-session-dock" class="hidden fixed bottom-4 inset-x-3 sm:inset-x-6 max-w-5xl mx-auto z-40 bg-black/95 backdrop-blur-xl border border-white/25 px-5 py-4 shadow-[0_25px_70px_rgba(0,0,0,0.95)]">
+
+    <!-- State A: 20-Min Hold Pending QR -->
     <div id="dock-reserved" class="hidden flex flex-wrap items-center justify-between gap-4">
       <div>
         <p class="font-tech text-[9px] text-amber-400 tracking-[0.2em]">ARRIVAL WINDOW ACTIVE // SCAN CHAIR QR</p>
         <h3 id="dock-reserved-title" class="font-display text-lg font-bold text-white mt-0.5">FLOOR 01 — CHAIR A1</h3>
       </div>
-      <div class="flex items-center gap-3 sm:gap-5 flex-wrap">
+      <div class="flex items-center gap-4 flex-wrap">
         <div class="border-l border-white/15 pl-4">
           <span class="block text-[9px] font-tech text-white/50">AUTO-RELEASE IN</span>
           <span id="dock-countdown" class="font-mono text-2xl font-bold text-amber-400 tracking-wider">20:00</span>
         </div>
-        <button onclick="openQrModal()" class="k-btn k-btn-dark !py-2.5 !px-5 !bg-white !text-black hover:!bg-emerald-400 hover:!text-black font-bold">
+        <button onclick="openQrModal()" class="k-btn k-btn-dark !py-2.5 !px-5 !bg-white !text-black hover:!bg-emerald-400 font-bold">
           <span>Scan QR</span><span class="arrow">→</span>
         </button>
-        <button onclick="releaseMySeat()" class="text-[11px] uppercase tracking-widest text-white/50 hover:text-rose-400 transition">
-          Cancel
-        </button>
+        <button onclick="releaseMySeat()" class="text-[11px] uppercase tracking-widest text-white/50 hover:text-rose-400 transition">Cancel</button>
       </div>
     </div>
 
-    <!-- Occupied (QR Confirmed) State -->
-    <div id="dock-occupied" class="hidden flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <p class="font-tech text-[9px] text-emerald-400 tracking-[0.2em]">QR CONFIRMED // ACTIVE SESSION</p>
-        <h3 id="dock-occupied-title" class="font-display text-lg font-bold text-white mt-0.5">FLOOR 01 — CHAIR A1</h3>
-        <p id="dock-occupied-sub" class="text-xs text-white/60"></p>
+    <!-- State B: QR Confirmed + THIRD EYE AI SENTINEL + BREAK MODE -->
+    <div id="dock-occupied" class="hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <!-- Live Third Eye Viewfinder -->
+      <div class="flex items-center gap-4">
+        <div class="relative w-36 h-24 sm:w-44 sm:h-28 bg-zinc-950 border border-white/25 overflow-hidden shrink-0">
+          <video id="ai-video" autoplay muted playsinline class="w-full h-full object-cover scale-x-[-1] opacity-85"></video>
+          <canvas id="ai-canvas" class="absolute inset-0 w-full h-full scale-x-[-1] pointer-events-none"></canvas>
+
+          <!-- Overlay when on Break or Camera Off -->
+          <div id="ai-overlay-mask" class="hidden absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-center p-2">
+            <span id="ai-mask-label" class="font-tech text-[9px] text-sky-400">BREAK ACTIVE</span>
+            <span id="ai-mask-sub" class="font-mono text-sm font-bold text-white mt-0.5">15:00</span>
+          </div>
+
+          <span id="ai-live-dot" class="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-black/80 border border-white/20 font-tech text-[8px] text-emerald-400">
+            ● AI EYE
+          </span>
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span id="ai-status-badge" class="px-2 py-0.5 text-[9px] font-tech border border-emerald-400/50 bg-emerald-950/50 text-emerald-300">
+              AI: INITIALIZING...
+            </span>
+            <span class="text-[9px] font-tech text-white/40 hidden sm:inline">EDGE AI • PRIVATE</span>
+          </div>
+          <h3 id="dock-occupied-title" class="font-display text-base sm:text-lg font-bold text-white">FLOOR 01 — CHAIR A1</h3>
+          <p id="dock-occupied-sub" class="text-[11px] text-white/60"></p>
+          <p id="ai-telemetry-line" class="text-[11px] font-mono text-white/75">Keep phone facing you to verify desk presence.</p>
+        </div>
       </div>
-      <button onclick="releaseMySeat()" class="k-btn k-btn-dark !py-2.5 !px-5 border-rose-500/50 hover:!bg-rose-600 hover:!text-white">
-        <span>Release Chair</span><span class="arrow">→</span>
-      </button>
+
+      <!-- Controls: Threshold, Break Mode, Camera Retry, Release -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <select id="ai-threshold-select" title="Absence Auto-Release Limit"
+          class="bg-zinc-950 border border-white/20 px-2.5 py-2 text-[10px] font-tech text-white/80 focus:outline-none">
+          <option value="15">ABSENT LIMIT: 15S (DEMO)</option>
+          <option value="60">ABSENT LIMIT: 1 MIN</option>
+          <option value="300">ABSENT LIMIT: 5 MIN</option>
+        </select>
+
+        <button id="btn-start-eye" onclick="startThirdEye()" class="hidden px-3 py-2 border border-emerald-400/60 text-emerald-300 hover:bg-emerald-400 hover:text-black text-[10px] font-tech transition">
+          ENABLE AI CAM
+        </button>
+
+        <button id="btn-sim-away" onclick="toggleSimAbsence()" class="hidden px-3 py-2 border border-amber-400/60 text-amber-300 hover:bg-amber-400 hover:text-black text-[10px] font-tech transition">
+          SIM ABSENCE
+        </button>
+
+        <button id="btn-break-toggle" onclick="toggleBreakMode()"
+          class="k-btn k-btn-dark !py-2.5 !px-4 !border-sky-400/60 hover:!bg-sky-400 hover:!text-black font-bold">
+          <span id="btn-break-label">15m Break</span>
+        </button>
+
+        <button onclick="releaseMySeat()"
+          class="k-btn k-btn-dark !py-2.5 !px-4 hover:!bg-rose-600 hover:!text-white">
+          <span>Release</span>
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- ==================== SECTION 1: FULL-BLEED CINEMATIC B-ROLL HERO ==================== -->
+  <!-- ==================== SECTION 1: FULL-BLEED B-ROLL HERO ==================== -->
   <section id="hero" class="relative min-h-screen w-full flex flex-col justify-between overflow-hidden bg-black pt-24 pb-10 px-5 sm:px-12">
-    <!-- B-Roll Video Layer + Ken Burns Architectural Fallback -->
     <div class="absolute inset-0 z-0 overflow-hidden">
-      <img
-        src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=2000&q=85"
-        alt="Architectural Library"
-        class="broll-motion absolute inset-0 w-full h-full object-cover opacity-50 grayscale contrast-125"
-      />
-      <video id="hero-video" autoplay muted loop playsinline
-        class="hero-parallax absolute inset-0 w-full h-full object-cover opacity-55 mix-blend-lighten scale-105">
+      <img src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=2000&q=85"
+        alt="Architectural Library" class="broll-motion absolute inset-0 w-full h-full object-cover opacity-50 grayscale contrast-125" />
+      <video autoplay muted loop playsinline class="hero-parallax absolute inset-0 w-full h-full object-cover opacity-55 mix-blend-lighten scale-105">
         <source src="https://assets.mixkit.co/videos/preview/mixkit-modern-architecture-building-exterior-43728-large.mp4" type="video/mp4" />
       </video>
-      <!-- Koenigsegg CCGT-inspired dramatic vignette & razor-thin crimson horizon reflection -->
       <div class="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-black/75"></div>
       <div class="absolute top-1/3 inset-x-0 h-px bg-gradient-to-r from-transparent via-rose-500/40 to-transparent blur-[2px]"></div>
     </div>
 
-    <!-- Top Model-Style Floor Navigation Bar (Exact Koenigsegg Tab Pattern) -->
     <div class="relative z-10 max-w-6xl w-full mx-auto mt-6">
       <div class="flex flex-wrap items-center gap-6 sm:gap-12 border-b border-white/15 text-xs sm:text-sm font-medium tracking-wide">
         <button onclick="selectHeroFloor(1)" id="hero-tab-1" class="floor-nav-item active">Floor 01 — Silent Wing</button>
@@ -280,10 +209,9 @@
       </div>
     </div>
 
-    <!-- Center Massive Exaggerated Wide Typography -->
     <div class="relative z-10 max-w-6xl w-full mx-auto my-auto py-16">
       <p id="hero-floor-kicker" class="font-tech text-[10px] sm:text-xs text-white/70 mb-5 tracking-[0.28em]">
-        FLOOR 01 // SILENT READING WING — <span id="hero-tab-vacant" class="text-white font-bold">LOADING...</span>
+        FLOOR 01 // SILENT READING WING — LOADING...
       </p>
 
       <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-10">
@@ -293,30 +221,25 @@
         </h1>
 
         <div class="flex flex-wrap items-center gap-4">
-          <button onclick="enterSelectedFloor3D()" class="k-btn k-btn-dark">
-            <span>Enter 3D Floor</span>
-            <span class="arrow">→</span>
+          <button onclick="scrollToSection('#deck-3d')" class="k-btn k-btn-dark">
+            <span>Enter 3D Floor</span><span class="arrow">→</span>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Bottom Scroll Telemetry Indicator -->
     <div class="relative z-10 max-w-6xl w-full mx-auto flex items-center justify-between text-[10px] font-tech text-white/45">
-      <span>20-MINUTE QR ARRIVAL PROTOCOL</span>
+      <span>20M QR HOLD • EDGE AI THIRD EYE • BREAK PROTOCOL</span>
       <span class="animate-pulse">SCROLL TO EXPLORE ↓</span>
     </div>
   </section>
 
-  <!-- ==================== SECTION 2: DARK ENGINEERING SHOWCASE + LIVE 3D FLOOR DECK ==================== -->
+  <!-- ==================== SECTION 2: 3D FLOOR DECK ==================== -->
   <section id="deck-3d" class="relative bg-black text-white py-24 sm:py-32 px-5 sm:px-12 border-t border-white/10">
     <div class="max-w-7xl mx-auto">
-      <!-- Koenigsegg "TECHNOLOGICAL ACHIEVEMENTS / IN-HOUSE INNOVATIONS" Header Pattern -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-16">
         <div class="lg:col-span-3 pt-2">
-          <p class="font-tech text-[10px] leading-relaxed text-white/60 tracking-[0.2em]">
-            SPATIAL<br />TELEMETRY // 01
-          </p>
+          <p class="font-tech text-[10px] leading-relaxed text-white/60 tracking-[0.2em]">SPATIAL<br />TELEMETRY // 01</p>
         </div>
         <div class="lg:col-span-9">
           <h2 class="kinetic-title font-wide text-3xl sm:text-5xl lg:text-6xl font-bold leading-[1.08] tracking-tight">
@@ -326,23 +249,19 @@
         </div>
       </div>
 
-      <!-- Floor Cards Directory (Live Vacant Floors List) -->
       <div id="vacant-floors-strip" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10"></div>
 
-      <!-- Studio 3D Interactive Floor Viewport -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-        <!-- Left Description & Controls Column -->
         <div class="lg:col-span-4 flex flex-col justify-between border border-white/15 bg-zinc-950/70 p-7 sm:p-8">
           <div class="space-y-6">
             <div>
               <span id="deck-floor-tag" class="font-tech text-[10px] text-white/50">ACTIVE LEVEL // 01</span>
               <h3 id="deck-floor-name" class="font-display text-2xl sm:text-3xl font-bold mt-2">SILENT READING WING</h3>
-              <p id="deck-floor-stats" class="text-xs text-white/60 mt-2 leading-relaxed">
-                Select any illuminated vacant chair on the 3D deck. Booking starts a strict 20-minute arrival countdown synced live to the Admin console.
+              <p class="text-xs text-white/60 mt-2 leading-relaxed">
+                Tap any vacant green chair to begin a 20-minute hold. Upon QR check-in, Third Eye AI verifies real desk presence—with a 15-minute Break Mode whenever you step away.
               </p>
             </div>
 
-            <!-- 3D Camera Orbit Calibration -->
             <div class="pt-5 border-t border-white/10 space-y-4">
               <div class="flex items-center justify-between">
                 <span class="font-tech text-[10px] text-white/55">CAMERA ORBIT</span>
@@ -363,24 +282,21 @@
               </div>
             </div>
 
-            <!-- Monochrome + Telemetry Status Legend -->
             <div class="pt-5 border-t border-white/10 grid grid-cols-2 gap-3 text-[11px] text-white/70">
               <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 bg-emerald-400 inline-block"></span> Vacant</div>
               <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 bg-amber-400 inline-block"></span> 20m Hold</div>
               <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 bg-rose-500 inline-block"></span> Occupied</div>
-              <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 bg-white inline-block"></span> Your Seat</div>
+              <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 bg-sky-400 inline-block"></span> On Break</div>
             </div>
           </div>
 
           <div class="pt-8 mt-6 border-t border-white/10">
-            <button id="deck-login-cta" onclick="openLoginModal()" class="k-btn k-btn-dark w-full">
-              <span id="deck-login-cta-label">Student Access Login</span>
-              <span class="arrow">→</span>
+            <button onclick="openLoginModal()" class="k-btn k-btn-dark w-full">
+              <span id="deck-login-cta-label">Student Access Login</span><span class="arrow">→</span>
             </button>
           </div>
         </div>
 
-        <!-- Right 3D Architectural Canvas -->
         <div class="lg:col-span-8 scene-3d relative min-h-[470px] sm:min-h-[530px] border border-white/15 bg-[radial-gradient(circle_at_center,#18181b_0%,#000000_82%)] flex items-center justify-center overflow-hidden p-4">
           <div id="floor-stage" class="floor-stage studio-grid relative p-7 sm:p-11 border border-white/25 bg-black/90 shadow-[0_45px_95px_rgba(0,0,0,0.95)]"
             style="transform: rotateX(56deg) rotateZ(-30deg);">
@@ -390,15 +306,10 @@
               <span id="stage-label" class="text-white">FLOOR 01</span>
             </div>
 
-            <!-- Row A Chairs -->
             <div id="row-a-grid" class="grid grid-cols-6 gap-4 sm:gap-6" style="transform-style: preserve-3d;"></div>
-
-            <!-- Central Aisle -->
             <div class="my-6 py-1.5 border-y border-dashed border-white/15 text-center font-tech text-[8px] text-white/35 tracking-[0.35em]">
               CENTRAL GALLERY AISLE
             </div>
-
-            <!-- Row B Chairs -->
             <div id="row-b-grid" class="grid grid-cols-6 gap-4 sm:gap-6" style="transform-style: preserve-3d;"></div>
           </div>
         </div>
@@ -406,60 +317,37 @@
     </div>
   </section>
 
-  <!-- ==================== SECTION 3: STARK WHITE EDITORIAL ("WHY WE DO WHAT WE DO" PATTERN) ==================== -->
+  <!-- ==================== SECTION 3: THIRD EYE AI EDITORIAL ==================== -->
   <section class="relative bg-white text-black py-28 sm:py-36 px-5 sm:px-12 overflow-hidden">
     <div class="max-w-7xl mx-auto">
       <div class="flex justify-end mb-12">
-        <span class="font-tech text-[10px] tracking-[0.22em] text-black/60">THE PROTOCOL // 02</span>
+        <span class="font-tech text-[10px] tracking-[0.22em] text-black/60">EDGE AI SENTINEL // 02</span>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-        <!-- Left Monochrome Parallax B-Roll Frame -->
         <div class="lg:col-span-6">
           <div class="reveal-frame relative aspect-[4/4.6] bg-zinc-900 overflow-hidden shadow-2xl">
-            <img
-              src="https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=1400&q=85"
-              alt="Library Hallway"
-              class="broll-motion parallax-media absolute inset-0 w-full h-full object-cover grayscale contrast-125"
-            />
-            <video autoplay muted loop playsinline
-              class="parallax-media absolute inset-0 w-full h-full object-cover grayscale contrast-125 opacity-80">
+            <img src="https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=1400&q=85"
+              alt="Library Hallway" class="broll-motion absolute inset-0 w-full h-full object-cover grayscale contrast-125" />
+            <video autoplay muted loop playsinline class="absolute inset-0 w-full h-full object-cover grayscale contrast-125 opacity-80">
               <source src="https://assets.mixkit.co/videos/preview/mixkit-student-studying-in-a-library-4773-large.mp4" type="video/mp4" />
             </video>
           </div>
         </div>
 
-        <!-- Right Staggered Koenigsegg Editorial Typography -->
         <div class="lg:col-span-6 space-y-10">
-          <h2 class="kinetic-title font-display text-4xl sm:text-6xl lg:text-[4.2rem] font-extrabold leading-[0.98] tracking-tight text-black">
-            <span class="block">WHY WE</span>
-            <span class="block ml-10 sm:ml-20">ENGINEER</span>
-            <span class="block">EVERY SEAT</span>
+          <h2 class="kinetic-title font-display text-4xl sm:text-6xl lg:text-[4.1rem] font-extrabold leading-[0.98] tracking-tight text-black">
+            <span class="block">THE PHONE</span>
+            <span class="block ml-10 sm:ml-20">BECOMES THE</span>
+            <span class="block">THIRD EYE</span>
           </h2>
 
           <div class="sm:ml-20 max-w-md space-y-6">
             <p class="text-sm text-black/70 leading-relaxed">
-              Every single chair on every floor is monitored in real time. No ghost reservations, no wandering across three floors during finals week—just a 20-minute arrival window verified by physical desk QR scan.
+              Once a student scans the desk QR, on-device TensorFlow vision verifies real presence—zero video ever leaves the device. Stepping out legitimately? Tap <strong>15m Break</strong> to pause the AI. Abandon the desk without a break, and the seat auto-releases instantly.
             </p>
-
-            <div class="grid grid-cols-3 gap-4 border-t border-black/15 pt-5 text-xs">
-              <div>
-                <span class="font-tech text-[10px] text-black/45 block">STEP 01</span>
-                <span class="font-semibold mt-1 block">Tap 3D Chair</span>
-              </div>
-              <div>
-                <span class="font-tech text-[10px] text-black/45 block">STEP 02</span>
-                <span class="font-semibold mt-1 block">20m Arrival</span>
-              </div>
-              <div>
-                <span class="font-tech text-[10px] text-black/45 block">STEP 03</span>
-                <span class="font-semibold mt-1 block">QR & Duration</span>
-              </div>
-            </div>
-
-            <button onclick="scrollToSection('#deck-3d')" class="k-btn k-btn-light mt-2">
-              <span>Reserve a Seat</span>
-              <span class="arrow">→</span>
+            <button onclick="scrollToSection('#deck-3d')" class="k-btn k-btn-light">
+              <span>Experience 3D Floor</span><span class="arrow">→</span>
             </button>
           </div>
         </div>
@@ -467,55 +355,10 @@
     </div>
   </section>
 
-  <!-- ==================== SECTION 4: ASYMMETRIC WHITE VISION ("DELIVERING ON A SINGULAR VISION") ==================== -->
-  <section class="relative bg-white text-black py-24 sm:py-32 px-5 sm:px-12 border-t border-black/10 overflow-hidden">
-    <div class="max-w-7xl mx-auto">
-      <div class="mb-12">
-        <span class="font-tech text-[10px] tracking-[0.22em] text-black/60">ZERO GHOST SEATS // 03</span>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-        <!-- Left Staggered Display Headline -->
-        <div class="lg:col-span-6 space-y-10 order-2 lg:order-1">
-          <h2 class="kinetic-title font-display text-4xl sm:text-5xl lg:text-[3.8rem] font-extrabold leading-[1.02] tracking-tight text-black">
-            <span class="block">DELIVERING ON</span>
-            <span class="block ml-8 sm:ml-16">ZERO WASTED</span>
-            <span class="block">CAPACITY</span>
-          </h2>
-
-          <div class="sm:ml-16 max-w-md space-y-6">
-            <p class="text-sm text-black/70 leading-relaxed">
-              If a student books a chair and fails to reach the desk and scan its QR tag within 20 minutes, our database trigger automatically purges the hold and returns the seat to the live 3D floor map instantaneously.
-            </p>
-            <a href="admin.html" class="k-btn k-btn-light">
-              <span>Open Admin Telemetry</span>
-              <span class="arrow">→</span>
-            </a>
-          </div>
-        </div>
-
-        <!-- Right Vertical Architectural B-Roll -->
-        <div class="lg:col-span-6 order-1 lg:order-2">
-          <div class="reveal-frame relative aspect-[4/4.8] bg-zinc-950 overflow-hidden shadow-2xl">
-            <img
-              src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1400&q=85"
-              alt="Modern University Architecture"
-              class="broll-motion parallax-media absolute inset-0 w-full h-full object-cover contrast-115"
-            />
-            <video autoplay muted loop playsinline
-              class="parallax-media absolute inset-0 w-full h-full object-cover opacity-85">
-              <source src="https://assets.mixkit.co/videos/preview/mixkit-walking-through-a-modern-building-corridor-43726-large.mp4" type="video/mp4" />
-            </video>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==================== SECTION 5: ICONIC KOENIGSEGG FOOTER ("THE SHOW MUST GO ON") ==================== -->
-  <footer class="bg-white text-black pt-16 pb-28 px-5 sm:px-12 border-t border-black/15">
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="bg-white text-black pt-16 pb-40 px-5 sm:px-12 border-t border-black/15">
     <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-12 items-start">
-      <div class="md:col-span-5">
+      <div class="md:col-span-6">
         <h2 class="font-display text-5xl sm:text-6xl font-extrabold leading-[0.94] tracking-tight text-black">
           <span class="block">THE</span>
           <span class="block ml-12">STUDY</span>
@@ -523,24 +366,13 @@
           <span class="block">GO ON</span>
         </h2>
       </div>
-
       <div class="md:col-span-3 space-y-3 text-sm font-medium text-black/80">
-        <button onclick="selectFloorAndScroll(1)" class="block hover:text-black transition">Floor 01 — Silent Wing</button>
-        <button onclick="selectFloorAndScroll(2)" class="block hover:text-black transition">Floor 02 — Tech Deck</button>
-        <button onclick="selectFloorAndScroll(3)" class="block hover:text-black transition">Floor 03 — Research Lounge</button>
+        <button onclick="selectFloorAndScroll(1)" class="block hover:text-black">Floor 01 — Silent Wing</button>
+        <button onclick="selectFloorAndScroll(2)" class="block hover:text-black">Floor 02 — Tech Deck</button>
+        <button onclick="selectFloorAndScroll(3)" class="block hover:text-black">Floor 03 — Research Lounge</button>
       </div>
-
-      <div class="md:col-span-2 space-y-2.5 text-xs text-black/60">
-        <button onclick="openLoginModal()" class="block hover:text-black transition">Student Access</button>
-        <a href="admin.html" class="block hover:text-black transition">Admin Control Center</a>
-        <a href="#deck-3d" class="block hover:text-black transition">3D Spatial Map</a>
-      </div>
-
-      <div class="md:col-span-2 flex md:justify-end">
-        <div class="w-12 h-14 border border-black/80 flex items-center justify-center font-tech text-xs font-bold"
-             style="clip-path: polygon(0 0, 100% 0, 100% 72%, 50% 100%, 0 72%);">
-          M4
-        </div>
+      <div class="md:col-span-3 flex md:justify-end items-start gap-6">
+        <a href="admin.html" class="k-btn k-btn-light"><span>Admin View</span><span class="arrow">→</span></a>
       </div>
     </div>
   </footer>
@@ -564,9 +396,7 @@
             class="w-full bg-zinc-950 border border-white/20 px-4 py-3 text-sm text-white focus:border-white focus:outline-none" />
         </div>
         <div class="flex items-center justify-between pt-2">
-          <button type="button" id="logout-inline-btn" onclick="logoutStudent()" class="hidden text-xs text-rose-400 hover:underline">
-            Logout Current ID
-          </button>
+          <button type="button" id="logout-inline-btn" onclick="logoutStudent()" class="hidden text-xs text-rose-400 hover:underline">Logout</button>
           <button type="submit" class="k-btn k-btn-dark !bg-white !text-black hover:!bg-zinc-200 ml-auto">
             <span>Authenticate</span><span class="arrow">→</span>
           </button>
@@ -575,7 +405,7 @@
     </div>
   </div>
 
-  <!-- ==================== MODAL 2: CONFIRM CHAIR RESERVATION ==================== -->
+  <!-- ==================== MODAL 2: CONFIRM CHAIR BOOKING ==================== -->
   <div id="modal-book" data-lenis-prevent class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
     <div class="w-full max-w-md bg-black border border-white/25 p-8 shadow-2xl space-y-6">
       <div>
@@ -583,11 +413,9 @@
         <h3 id="book-modal-title" class="font-wide text-2xl font-bold mt-2">CHAIR A1</h3>
         <p id="book-modal-sub" class="text-xs text-white/60 mt-1"></p>
       </div>
-
       <div class="border-l-2 border-amber-400 pl-4 py-1 text-xs text-white/80 leading-relaxed">
-        Reserving initializes a <strong class="text-white">20-minute arrival countdown</strong>. Scan the chair QR upon arrival to select your duration—otherwise the seat automatically releases.
+        Starts a <strong class="text-white">20-minute arrival countdown</strong>. Scan the chair QR upon arrival to activate <strong class="text-emerald-400">Third Eye AI</strong> and lock your study block.
       </div>
-
       <div class="flex items-center justify-end gap-4 pt-2">
         <button onclick="closeBookModal()" class="text-xs uppercase tracking-widest text-white/50 hover:text-white">Cancel</button>
         <button id="btn-confirm-book" class="k-btn k-btn-dark !bg-white !text-black hover:!bg-emerald-400">
@@ -609,32 +437,24 @@
         <button onclick="closeQrModal()" class="text-white/50 hover:text-white text-sm">✕</button>
       </div>
 
-      <!-- Step 1: Scan -->
       <div id="qr-step-1" class="space-y-4">
         <div id="qr-reader" class="w-full bg-zinc-950 border border-white/15 min-h-[140px] overflow-hidden"></div>
-        <p id="qr-cam-note" class="hidden text-[11px] text-white/50 text-center">
-          Use live HTTPS camera, simulate scan, or type chair tag below.
-        </p>
-
+        <p id="qr-cam-note" class="hidden text-[11px] text-white/50 text-center">Use live HTTPS camera, simulate scan, or enter tag below.</p>
         <button id="btn-sim-qr" class="k-btn k-btn-dark w-full !bg-white !text-black hover:!bg-zinc-200 font-bold">
           <span>Simulate Chair QR Scan</span><span class="arrow">→</span>
         </button>
-
         <div class="flex gap-2">
           <input id="qr-manual-input" type="text" placeholder="Enter tag (e.g., LIB-F1-A1)"
             class="flex-1 bg-zinc-950 border border-white/20 px-3.5 py-2.5 text-xs text-white focus:border-white focus:outline-none" />
           <button onclick="verifyQrInput(document.getElementById('qr-manual-input').value)"
-            class="px-4 py-2.5 border border-white/30 hover:bg-white hover:text-black text-xs font-tech transition">
-            OK
-          </button>
+            class="px-4 py-2.5 border border-white/30 hover:bg-white hover:text-black text-xs font-tech transition">OK</button>
         </div>
         <p id="qr-err" class="hidden text-xs text-rose-400"></p>
       </div>
 
-      <!-- Step 2: Choose Study Duration -->
       <div id="qr-step-2" class="hidden space-y-5">
         <div class="border border-emerald-500/40 bg-emerald-950/30 px-4 py-3 text-xs text-emerald-300">
-          ✓ Chair QR verified. Select your study duration:
+          ✓ Chair QR verified. Select duration to engage <strong>Third Eye AI Presence Monitor</strong>:
         </div>
 
         <div class="grid grid-cols-2 gap-3">
@@ -657,75 +477,35 @@
         </div>
 
         <button id="btn-confirm-duration" class="k-btn k-btn-dark w-full !bg-emerald-400 !text-black hover:!bg-emerald-300 font-bold">
-          <span>Confirm 2-Hour Session</span><span class="arrow">→</span>
+          <span>Confirm & Start Third Eye AI</span><span class="arrow">→</span>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- ==================== MOTION ENGINE & LIVE SUPABASE LOGIC ==================== -->
+  <!-- ==================== SCRIPT: MOTION + SUPABASE + THIRD EYE AI ==================== -->
   <script>
-    // 1. Initialize Lenis Smooth Scroll + GSAP ScrollTrigger
-    const lenis = new Lenis({
-      duration: 1.25,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    });
-    function raf(time) {
-      lenis.raf(time);
-      requestAnimationFrame(raf);
-    }
+    // 1. Lenis + GSAP Motion Physics
+    const lenis = new Lenis({ duration: 1.2, smoothWheel: true });
+    function raf(t) { lenis.raf(t); requestAnimationFrame(raf); }
     requestAnimationFrame(raf);
-
     gsap.registerPlugin(ScrollTrigger);
     lenis.on('scroll', ScrollTrigger.update);
 
-    // Header shifts to Koenigsegg's signature slate-grey bar after hero scroll
     window.addEventListener('scroll', () => {
-      const nav = document.getElementById('main-nav');
-      if (window.scrollY > 120) nav.classList.add('scrolled-slate');
-      else nav.classList.remove('scrolled-slate');
+      document.getElementById('main-nav').classList.toggle('scrolled-slate', window.scrollY > 120);
     });
-
-    // Hero Entry Choreography
-    gsap.from('.hero-headline', { y: 60, opacity: 0, duration: 1.2, ease: 'power4.out', delay: 0.15 });
-
-    // Scroll-scrubbed Parallax on Hero & Editorial B-Rolls
-    gsap.to('.hero-parallax', {
-      yPercent: 18,
-      ease: 'none',
-      scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true },
+    gsap.from('.hero-headline', { y: 55, opacity: 0, duration: 1.15, ease: 'power4.out', delay: 0.1 });
+    gsap.to('.hero-parallax', { yPercent: 18, ease: 'none', scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true } });
+    gsap.utils.toArray('.kinetic-title').forEach((el) => {
+      gsap.from(el, { y: 50, opacity: 0, duration: 0.95, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 85%' } });
     });
-
-    gsap.utils.toArray('.kinetic-title').forEach((title) => {
-      gsap.from(title, {
-        y: 55,
-        opacity: 0,
-        duration: 1,
-        ease: 'power3.out',
-        scrollTrigger: { trigger: title, start: 'top 85%' },
-      });
+    gsap.utils.toArray('.reveal-frame').forEach((f) => {
+      gsap.fromTo(f, { clipPath: 'inset(14% 0% 14% 0%)', scale: 0.96 }, { clipPath: 'inset(0% 0% 0% 0%)', scale: 1, duration: 1.05, ease: 'power3.out', scrollTrigger: { trigger: f, start: 'top 82%' } });
     });
+    function scrollToSection(sel) { lenis.scrollTo(sel, { offset: -64, duration: 1.15 }); }
 
-    gsap.utils.toArray('.reveal-frame').forEach((frame) => {
-      gsap.fromTo(
-        frame,
-        { clipPath: 'inset(14% 0% 14% 0%)', scale: 0.96 },
-        {
-          clipPath: 'inset(0% 0% 0% 0%)',
-          scale: 1,
-          duration: 1.1,
-          ease: 'power3.out',
-          scrollTrigger: { trigger: frame, start: 'top 82%' },
-        }
-      );
-    });
-
-    function scrollToSection(selector) {
-      lenis.scrollTo(selector, { offset: -64, duration: 1.2 });
-    }
-
-    // 2. Supabase Live Engine
+    // 2. Supabase Configuration
     const SUPABASE_URL = 'https://bsqfixokaqhvbxzhsjui.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_EOW8eQXhU3jQhyRntuhp4w_K2bCmQth';
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -738,11 +518,22 @@
     let countdownInt = null;
     let qrScanner = null;
 
+    // Third Eye AI State
+    let aiModel = null;
+    let aiStream = null;
+    let aiLoopTimer = null;
+    let breakTimerInt = null;
+    let absentSeconds = 0;
+    let lastSyncedPresence = null;
+    let simulateAwayMode = false;
+
+    const FLOOR_TITLES = { 1: 'SILENT READING WING', 2: 'TECH & CODING DECK', 3: 'RESEARCH & WINDOW LOUNGE' };
+
     function showToast(msg) {
       const el = document.getElementById('toast-bar');
       el.textContent = msg;
       el.classList.remove('hidden');
-      setTimeout(() => el.classList.add('hidden'), 5000);
+      setTimeout(() => el.classList.add('hidden'), 5500);
     }
 
     function getMySeat() {
@@ -750,7 +541,7 @@
       return allSeats.find((s) => s.reserved_by === student.regId && s.status !== 'available') || null;
     }
 
-    // 3. Auth UI
+    // 3. Auth Logic
     function syncAuthUI() {
       const btn = document.getElementById('header-auth-btn');
       const deckLabel = document.getElementById('deck-login-cta-label');
@@ -765,7 +556,6 @@
         logoutInline.classList.add('hidden');
       }
     }
-
     function openLoginModal() {
       if (student) {
         document.getElementById('login-reg').value = student.regId;
@@ -774,19 +564,15 @@
       document.getElementById('modal-login').classList.remove('hidden');
       lenis.stop();
     }
-    function closeLoginModal() {
-      document.getElementById('modal-login').classList.add('hidden');
-      lenis.start();
-    }
+    function closeLoginModal() { document.getElementById('modal-login').classList.add('hidden'); lenis.start(); }
     function logoutStudent() {
+      stopThirdEye();
       localStorage.removeItem('m4_student');
       student = null;
       syncAuthUI();
       closeLoginModal();
       renderAll();
-      showToast('Signed out of Student Portal.');
     }
-
     document.getElementById('login-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const regId = document.getElementById('login-reg').value.trim();
@@ -797,19 +583,13 @@
       syncAuthUI();
       closeLoginModal();
       renderAll();
-      showToast(`Authenticated as ${name}. Select any vacant chair on the 3D deck.`);
       if (pendingChair) openBookModal(pendingChair);
     });
 
-    // 4. Fetch & Realtime Sync
+    // 4. Data Fetching & Rendering
     async function fetchSeats() {
       await db.rpc('release_expired_library_seats');
-      const { data, error } = await db
-        .from('library_seats')
-        .select('*')
-        .order('floor_num', { ascending: true })
-        .order('id', { ascending: true });
-
+      const { data, error } = await db.from('library_seats').select('*').order('floor_num').order('id');
       if (!error && data) {
         allSeats = data;
         renderAll();
@@ -825,22 +605,14 @@
       renderSessionDock();
     }
 
-    // 5. Hero Floor Switcher (Koenigsegg Model Bar)
-    const FLOOR_TITLES = {
-      1: 'SILENT READING WING',
-      2: 'TECH & CODING DECK',
-      3: 'RESEARCH & WINDOW LOUNGE',
-    };
-
     window.selectHeroFloor = (num) => {
       activeFloor = num;
-      [1, 2, 3].forEach((n) => {
-        document.getElementById(`hero-tab-${n}`).classList.toggle('active', n === num);
-      });
+      [1, 2, 3].forEach((n) => document.getElementById(`hero-tab-${n}`).classList.toggle('active', n === num));
       updateHeroFloorPreview();
       renderFloorCards();
       render3DDeck();
     };
+    window.selectFloorAndScroll = (num) => { selectHeroFloor(num); scrollToSection('#deck-3d'); };
 
     function updateHeroFloorPreview() {
       const fSeats = allSeats.filter((s) => s.floor_num === activeFloor);
@@ -850,54 +622,30 @@
         `FLOOR 0${activeFloor} // ${name} — <span class="text-white font-bold">${vacant} OF ${fSeats.length || 12} VACANT</span>`;
     }
 
-    window.enterSelectedFloor3D = () => {
-      scrollToSection('#deck-3d');
-    };
-
-    window.selectFloorAndScroll = (num) => {
-      selectHeroFloor(num);
-      scrollToSection('#deck-3d');
-    };
-
-    // 6. Render Floor Selector Cards above 3D Deck
     function renderFloorCards() {
-      const container = document.getElementById('vacant-floors-strip');
-      container.innerHTML = [1, 2, 3]
-        .map((num) => {
-          const fSeats = allSeats.filter((s) => s.floor_num === num);
-          const vacant = fSeats.filter((s) => s.status === 'available').length;
-          const name = fSeats[0]?.floor_name || FLOOR_TITLES[num];
-          const isActive = activeFloor === num;
-          return `
-            <button onclick="selectHeroFloor(${num})"
-              class="text-left p-5 border transition-all duration-300 ${
-                isActive
-                  ? 'border-white bg-white text-black'
-                  : 'border-white/15 bg-zinc-950/70 text-white hover:border-white/50'
-              }">
-              <div class="flex items-center justify-between font-tech text-[10px]">
-                <span>FLOOR 0${num}</span>
-                <span class="${isActive ? 'text-black font-bold' : 'text-emerald-400'}">${vacant} VACANT</span>
-              </div>
-              <div class="font-display text-lg font-bold mt-2">${name}</div>
-            </button>
-          `;
-        })
-        .join('');
+      document.getElementById('vacant-floors-strip').innerHTML = [1, 2, 3].map((num) => {
+        const fSeats = allSeats.filter((s) => s.floor_num === num);
+        const vacant = fSeats.filter((s) => s.status === 'available').length;
+        const name = fSeats[0]?.floor_name || FLOOR_TITLES[num];
+        const isActive = activeFloor === num;
+        return `
+          <button onclick="selectHeroFloor(${num})"
+            class="text-left p-5 border transition-all duration-300 ${isActive ? 'border-white bg-white text-black' : 'border-white/15 bg-zinc-950/70 text-white hover:border-white/50'}">
+            <div class="flex items-center justify-between font-tech text-[10px]">
+              <span>FLOOR 0${num}</span>
+              <span class="${isActive ? 'text-black font-bold' : 'text-emerald-400'}">${vacant} VACANT</span>
+            </div>
+            <div class="font-display text-lg font-bold mt-2">${name}</div>
+          </button>`;
+      }).join('');
     }
 
-    // 7. Render 3D Floor Deck Chairs
     function render3DDeck() {
       const fSeats = allSeats.filter((s) => s.floor_num === activeFloor);
       const vacant = fSeats.filter((s) => s.status === 'available').length;
-      const name = fSeats[0]?.floor_name || FLOOR_TITLES[activeFloor];
-
       document.getElementById('deck-floor-tag').textContent = `ACTIVE LEVEL // 0${activeFloor}`;
-      document.getElementById('deck-floor-name').textContent = name.toUpperCase();
+      document.getElementById('deck-floor-name').textContent = (fSeats[0]?.floor_name || FLOOR_TITLES[activeFloor]).toUpperCase();
       document.getElementById('stage-label').textContent = `FLOOR 0${activeFloor} // ${vacant} VACANT`;
-
-      const rowA = fSeats.filter((s) => s.seat_label.startsWith('A'));
-      const rowB = fSeats.filter((s) => s.seat_label.startsWith('B'));
 
       const buildChair = (seat) => {
         const isMine = student && seat.reserved_by === student.regId && seat.status !== 'available';
@@ -905,61 +653,50 @@
         let backColor = 'bg-emerald-300';
         let tag = 'OPEN';
 
-        if (isMine) {
+        if (seat.status === 'occupied' && seat.presence_state === 'on_break') {
+          podColor = 'bg-sky-400 border-sky-200 text-black shadow-[0_10px_24px_rgba(56,189,248,0.55)]';
+          backColor = 'bg-sky-200';
+          tag = 'BREAK';
+        } else if (isMine) {
           podColor = 'bg-white border-white text-black shadow-[0_14px_30px_rgba(255,255,255,0.75)]';
           backColor = 'bg-zinc-200';
           tag = 'YOURS';
         } else if (seat.status === 'reserved') {
-          podColor = 'bg-amber-400/90 border-amber-200 text-black shadow-[0_8px_18px_rgba(251,191,36,0.35)] cursor-not-allowed';
+          podColor = 'bg-amber-400/90 border-amber-200 text-black cursor-not-allowed';
           backColor = 'bg-amber-200';
           tag = 'HOLD';
         } else if (seat.status === 'occupied') {
-          podColor = 'bg-rose-600/90 border-rose-400 text-white shadow-[0_8px_18px_rgba(225,29,72,0.35)] cursor-not-allowed';
+          podColor = 'bg-rose-600/90 border-rose-400 text-white cursor-not-allowed';
           backColor = 'bg-rose-400';
-          tag = 'BUSY';
+          tag = seat.presence_state === 'absent_warning' ? 'AWAY?' : 'BUSY';
         }
 
         return `
           <div onclick="handleChairClick('${seat.id}')" class="chair-pod ${seat.status === 'available' ? 'vacant' : ''} flex flex-col items-center">
-            <div class="w-14 sm:w-16 h-5 bg-zinc-900 border border-white/25 mb-2 flex items-center justify-center">
-              <div class="w-6 h-0.5 bg-white/30"></div>
-            </div>
+            <div class="w-14 sm:w-16 h-5 bg-zinc-900 border border-white/25 mb-2 flex items-center justify-center"><div class="w-6 h-0.5 bg-white/30"></div></div>
             <div class="relative flex flex-col items-center">
               <div class="chair-cushion w-12 sm:w-14 h-11 sm:h-12 border ${podColor} flex flex-col items-center justify-center font-bold">
-                <span class="text-xs leading-none tracking-tight">${seat.seat_label}</span>
+                <span class="text-xs leading-none">${seat.seat_label}</span>
                 <span class="text-[8px] font-tech mt-0.5">${tag}</span>
               </div>
               <div class="chair-back w-11 h-2.5 -mt-1 ${backColor}"></div>
             </div>
-          </div>
-        `;
+          </div>`;
       };
 
-      document.getElementById('row-a-grid').innerHTML = rowA.map(buildChair).join('');
-      document.getElementById('row-b-grid').innerHTML = rowB.map(buildChair).join('');
+      document.getElementById('row-a-grid').innerHTML = fSeats.filter((s) => s.seat_label.startsWith('A')).map(buildChair).join('');
+      document.getElementById('row-b-grid').innerHTML = fSeats.filter((s) => s.seat_label.startsWith('B')).map(buildChair).join('');
     }
 
-    // 8. Click Chair -> Book -> 20-Min Hold
+    // 5. Chair Booking Flow
     window.handleChairClick = (seatId) => {
       const seat = allSeats.find((s) => s.id === seatId);
       if (!seat || seat.status !== 'available') return;
-
-      if (!student) {
-        pendingChair = seat;
-        openLoginModal();
-        showToast('Sign in with your Student ID to confirm this chair.');
-        return;
-      }
-
+      if (!student) { pendingChair = seat; openLoginModal(); showToast('Authenticate to reserve this chair.'); return; }
       const mine = getMySeat();
-      if (mine) {
-        showToast(`Active reservation already exists: Floor 0${mine.floor_num} Chair ${mine.seat_label}.`);
-        return;
-      }
-
+      if (mine) { showToast(`Active reservation: Floor 0${mine.floor_num} Chair ${mine.seat_label}.`); return; }
       openBookModal(seat);
     };
-
     function openBookModal(seat) {
       pendingChair = seat;
       document.getElementById('book-modal-title').textContent = `CHAIR ${seat.seat_label} // FLOOR 0${seat.floor_num}`;
@@ -967,39 +704,20 @@
       document.getElementById('modal-book').classList.remove('hidden');
       lenis.stop();
     }
-
-    function closeBookModal() {
-      pendingChair = null;
-      document.getElementById('modal-book').classList.add('hidden');
-      lenis.start();
-    }
+    function closeBookModal() { pendingChair = null; document.getElementById('modal-book').classList.add('hidden'); lenis.start(); }
 
     document.getElementById('btn-confirm-book').addEventListener('click', async () => {
       if (!pendingChair || !student) return;
       const expires = new Date(Date.now() + 20 * 60 * 1000).toISOString();
-
-      const { error } = await db
-        .from('library_seats')
-        .update({
-          status: 'reserved',
-          reserved_by: student.regId,
-          student_name: student.name,
-          hold_expires_at: expires,
-        })
-        .eq('id', pendingChair.id)
-        .eq('status', 'available');
-
-      const bookedLabel = pendingChair.seat_label;
+      const { error } = await db.from('library_seats').update({
+        status: 'reserved', reserved_by: student.regId, student_name: student.name, hold_expires_at: expires, presence_state: null, break_until: null
+      }).eq('id', pendingChair.id).eq('status', 'available');
+      const label = pendingChair.seat_label;
       closeBookModal();
-
-      if (error) showToast('Booking error: ' + error.message);
-      else {
-        showToast(`Chair ${bookedLabel} locked for 20 minutes. Reach the desk & scan QR.`);
-        fetchSeats();
-      }
+      if (!error) { showToast(`Chair ${label} reserved for 20 minutes. Scan desk QR upon arrival.`); fetchSeats(); }
     });
 
-    // 9. Persistent Bottom 20-Min Countdown Dock & Auto-Release
+    // 6. Session Dock (20m Countdown + Occupied Third Eye HUD + Break Mode)
     function renderSessionDock() {
       const mine = getMySeat();
       const dock = document.getElementById('active-session-dock');
@@ -1007,14 +725,17 @@
       const occEl = document.getElementById('dock-occupied');
 
       if (countdownInt) clearInterval(countdownInt);
+      if (breakTimerInt) clearInterval(breakTimerInt);
 
       if (!mine) {
         dock.classList.add('hidden');
+        stopThirdEye();
         return;
       }
       dock.classList.remove('hidden');
 
       if (mine.status === 'reserved' && mine.hold_expires_at) {
+        stopThirdEye();
         occEl.classList.add('hidden');
         resEl.classList.remove('hidden');
         document.getElementById('dock-reserved-title').textContent = `FLOOR 0${mine.floor_num} — CHAIR ${mine.seat_label}`;
@@ -1026,9 +747,7 @@
             await releaseMySeat();
             showToast(`20-minute arrival window expired. Chair ${mine.seat_label} auto-released.`);
           } else {
-            const m = String(Math.floor(secs / 60)).padStart(2, '0');
-            const s = String(secs % 60).padStart(2, '0');
-            document.getElementById('dock-countdown').textContent = `${m}:${s}`;
+            document.getElementById('dock-countdown').textContent = `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
           }
         };
         tick();
@@ -1037,30 +756,224 @@
         resEl.classList.add('hidden');
         occEl.classList.remove('hidden');
         document.getElementById('dock-occupied-title').textContent = `FLOOR 0${mine.floor_num} — CHAIR ${mine.seat_label}`;
-        const endStr = mine.occupied_until
-          ? new Date(mine.occupied_until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          : 'checkout';
-        document.getElementById('dock-occupied-sub').textContent = `Verified via Desk QR • Active until ${endStr}`;
+        const endStr = mine.occupied_until ? new Date(mine.occupied_until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'checkout';
+        document.getElementById('dock-occupied-sub').textContent = `QR Verified • Session until ${endStr}`;
+
+        // Sync Break Mode UI
+        const onBreak = mine.presence_state === 'on_break' && mine.break_until && new Date(mine.break_until) > new Date();
+        const mask = document.getElementById('ai-overlay-mask');
+        const breakBtnLabel = document.getElementById('btn-break-label');
+
+        if (onBreak) {
+          absentSeconds = 0;
+          mask.classList.remove('hidden');
+          document.getElementById('ai-mask-label').textContent = 'BREAK MODE // AI PAUSED';
+          breakBtnLabel.textContent = "I'm Back (Resume AI)";
+          setAiBadge('ON BREAK // PAUSED', 'sky');
+          document.getElementById('ai-telemetry-line').textContent = 'AI presence monitoring paused during authorized break.';
+
+          const tickBreak = async () => {
+            const rem = Math.floor((new Date(mine.break_until).getTime() - Date.now()) / 1000);
+            if (rem <= 0) {
+              clearInterval(breakTimerInt);
+              await resumeFromBreak();
+              showToast('15-minute break ended. Third Eye AI has resumed monitoring.');
+            } else {
+              document.getElementById('ai-mask-sub').textContent = `${String(Math.floor(rem / 60)).padStart(2, '0')}:${String(rem % 60).padStart(2, '0')}`;
+            }
+          };
+          tickBreak();
+          breakTimerInt = setInterval(tickBreak, 1000);
+        } else {
+          mask.classList.add('hidden');
+          breakBtnLabel.textContent = '15m Break';
+          // Prompt camera start button if page was refreshed and stream isn't active yet
+          if (!aiStream && !aiLoopTimer) {
+            document.getElementById('btn-start-eye').classList.remove('hidden');
+            setAiBadge('AI STANDBY — TAP ENABLE', 'amber');
+          }
+        }
       }
     }
 
-    async function releaseMySeat() {
+    async function releaseMySeat(reasonMsg) {
       const mine = getMySeat();
+      stopThirdEye();
       if (!mine) return;
-      await db
-        .from('library_seats')
-        .update({
-          status: 'available',
-          reserved_by: null,
-          student_name: null,
-          hold_expires_at: null,
-          occupied_until: null,
-        })
-        .eq('id', mine.id);
+      await db.from('library_seats').update({
+        status: 'available', reserved_by: null, student_name: null, hold_expires_at: null, occupied_until: null, presence_state: null, break_until: null
+      }).eq('id', mine.id);
+      if (reasonMsg) showToast(reasonMsg);
       fetchSeats();
     }
 
-    // 10. QR Scanner & Study Duration Selector
+    // 7. THIRD EYE EDGE AI ENGINE (TensorFlow.js + COCO-SSD)
+    function setAiBadge(text, tone) {
+      const el = document.getElementById('ai-status-badge');
+      el.textContent = text;
+      const styles = {
+        emerald: 'border-emerald-400/50 bg-emerald-950/50 text-emerald-300',
+        amber: 'border-amber-400/50 bg-amber-950/50 text-amber-300',
+        rose: 'border-rose-500/70 bg-rose-950/70 text-rose-300 animate-pulse',
+        sky: 'border-sky-400/50 bg-sky-950/50 text-sky-300',
+      };
+      el.className = `px-2 py-0.5 text-[9px] font-tech border ${styles[tone] || styles.emerald}`;
+    }
+
+    async function syncPresenceToSupabase(state) {
+      const mine = getMySeat();
+      if (!mine || mine.status !== 'occupied' || mine.presence_state === 'on_break') return;
+      if (lastSyncedPresence === state) return;
+      lastSyncedPresence = state;
+      await db.from('library_seats').update({ presence_state: state }).eq('id', mine.id);
+    }
+
+    async function startThirdEye() {
+      const video = document.getElementById('ai-video');
+      const canvas = document.getElementById('ai-canvas');
+      const ctx = canvas.getContext('2d');
+      document.getElementById('btn-start-eye').classList.add('hidden');
+      setAiBadge('LOADING EDGE AI MODEL...', 'amber');
+      document.getElementById('ai-telemetry-line').textContent = 'Loading local TensorFlow vision model...';
+
+      try {
+        // Request front-facing camera (phone on desk acts as Third Eye)
+        aiStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 240 }, audio: false });
+        video.srcObject = aiStream;
+        await video.play();
+      } catch (err) {
+        // Graceful fallback if testing on a device without a webcam
+        document.getElementById('btn-sim-away').classList.remove('hidden');
+        setAiBadge('CAMERA UNAVAILABLE — SIM MODE', 'amber');
+        document.getElementById('ai-telemetry-line').textContent = 'No webcam found. Use SIM ABSENCE button to demo auto-release.';
+        runFallbackSimLoop();
+        return;
+      }
+
+      if (!aiModel) {
+        aiModel = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
+      }
+
+      absentSeconds = 0;
+      lastSyncedPresence = null;
+      setAiBadge('THIRD EYE ARMED', 'emerald');
+
+      if (aiLoopTimer) clearInterval(aiLoopTimer);
+      aiLoopTimer = setInterval(async () => {
+        const mine = getMySeat();
+        if (!mine || mine.status !== 'occupied') { stopThirdEye(); return; }
+        if (mine.presence_state === 'on_break') return; // Paused during Break Mode
+
+        const limitSecs = Number(document.getElementById('ai-threshold-select').value);
+
+        if (video.readyState === 4) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          const predictions = await aiModel.detect(video);
+          const person = predictions.find((p) => p.class === 'person' && p.score >= 0.42);
+
+          if (person && !simulateAwayMode) {
+            // Draw Koenigsegg-style precision targeting box around detected student
+            const [x, y, w, h] = person.bbox;
+            ctx.strokeStyle = '#34d399';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, w, h);
+            ctx.fillStyle = 'rgba(52, 211, 153, 0.14)';
+            ctx.fillRect(x, y, w, h);
+
+            absentSeconds = 0;
+            const conf = Math.round(person.score * 100);
+            setAiBadge(`AI: PRESENT (${conf}%)`, 'emerald');
+            document.getElementById('ai-telemetry-line').textContent = 'Student detected at desk. Session secure.';
+            syncPresenceToSupabase('present');
+          } else {
+            absentSeconds += 1;
+            const remaining = Math.max(0, limitSecs - absentSeconds);
+            setAiBadge(`ABSENT // RELEASE IN ${remaining}S`, 'rose');
+            document.getElementById('ai-telemetry-line').textContent =
+              `No person detected! Return to desk or tap 15m Break (${remaining}s left).`;
+
+            if (absentSeconds >= 3) syncPresenceToSupabase('absent_warning');
+
+            if (absentSeconds >= limitSecs) {
+              clearInterval(aiLoopTimer);
+              await releaseMySeat('Third Eye AI: Prolonged absence detected without Break Mode. Chair auto-released.');
+            }
+          }
+        }
+      }, 1000);
+    }
+
+    // Fallback simulator when running without a webcam
+    function runFallbackSimLoop() {
+      if (aiLoopTimer) clearInterval(aiLoopTimer);
+      aiLoopTimer = setInterval(async () => {
+        const mine = getMySeat();
+        if (!mine || mine.status !== 'occupied' || mine.presence_state === 'on_break') return;
+        const limitSecs = Number(document.getElementById('ai-threshold-select').value);
+        if (!simulateAwayMode) {
+          absentSeconds = 0;
+          setAiBadge('SIM AI: PRESENT', 'emerald');
+          syncPresenceToSupabase('present');
+        } else {
+          absentSeconds += 1;
+          const rem = Math.max(0, limitSecs - absentSeconds);
+          setAiBadge(`SIM ABSENT // ${rem}S`, 'rose');
+          document.getElementById('ai-telemetry-line').textContent = `Simulated absence! Auto-releasing in ${rem}s...`;
+          if (absentSeconds >= 2) syncPresenceToSupabase('absent_warning');
+          if (absentSeconds >= limitSecs) {
+            simulateAwayMode = false;
+            await releaseMySeat('Third Eye AI: Prolonged absence detected. Chair auto-released.');
+          }
+        }
+      }, 1000);
+    }
+
+    function toggleSimAbsence() {
+      simulateAwayMode = !simulateAwayMode;
+      document.getElementById('btn-sim-away').textContent = simulateAwayMode ? 'SIM RETURN' : 'SIM ABSENCE';
+    }
+
+    function stopThirdEye() {
+      if (aiLoopTimer) { clearInterval(aiLoopTimer); aiLoopTimer = null; }
+      if (aiStream) { aiStream.getTracks().forEach((t) => t.stop()); aiStream = null; }
+      absentSeconds = 0;
+      lastSyncedPresence = null;
+      simulateAwayMode = false;
+      document.getElementById('btn-start-eye').classList.add('hidden');
+      document.getElementById('btn-sim-away').classList.add('hidden');
+    }
+
+    // 8. Break Mode Controls (15-Minute Authorized Break)
+    async function toggleBreakMode() {
+      const mine = getMySeat();
+      if (!mine || mine.status !== 'occupied') return;
+      if (mine.presence_state === 'on_break') {
+        await resumeFromBreak();
+      } else {
+        const breakUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        absentSeconds = 0;
+        lastSyncedPresence = 'on_break';
+        await db.from('library_seats').update({ presence_state: 'on_break', break_until: breakUntil }).eq('id', mine.id);
+        showToast('15-Minute Break activated. Third Eye AI is paused while you step away.');
+        fetchSeats();
+      }
+    }
+
+    async function resumeFromBreak() {
+      const mine = getMySeat();
+      if (!mine) return;
+      absentSeconds = 0;
+      lastSyncedPresence = 'present';
+      await db.from('library_seats').update({ presence_state: 'present', break_until: null }).eq('id', mine.id);
+      showToast('Welcome back! Third Eye AI monitoring resumed.');
+      fetchSeats();
+      if (!aiStream) startThirdEye();
+    }
+
+    // 9. QR Scanner & Duration Modal
     function openQrModal() {
       const mine = getMySeat();
       if (!mine) return;
@@ -1076,21 +989,15 @@
 
       try {
         qrScanner = new Html5Qrcode('qr-reader');
-        qrScanner
-          .start({ facingMode: 'environment' }, { fps: 10, qrbox: 180 }, (code) => verifyQrInput(code))
+        qrScanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: 180 }, (code) => verifyQrInput(code))
           .catch(() => document.getElementById('qr-cam-note').classList.remove('hidden'));
-      } catch (e) {
-        document.getElementById('qr-cam-note').classList.remove('hidden');
-      }
+      } catch (e) { document.getElementById('qr-cam-note').classList.remove('hidden'); }
     }
 
     function closeQrModal() {
       document.getElementById('modal-qr').classList.add('hidden');
       lenis.start();
-      if (qrScanner) {
-        qrScanner.stop().catch(() => {});
-        qrScanner = null;
-      }
+      if (qrScanner) { qrScanner.stop().catch(() => {}); qrScanner = null; }
     }
 
     function verifyQrInput(raw) {
@@ -1098,17 +1005,13 @@
       if (!mine) return;
       const val = raw.trim().toUpperCase();
       const expected = `LIB-${mine.id.toUpperCase()}`;
-
       if (val === expected || val === mine.id.toUpperCase() || val === mine.seat_label.toUpperCase()) {
-        if (qrScanner) {
-          qrScanner.stop().catch(() => {});
-          qrScanner = null;
-        }
+        if (qrScanner) { qrScanner.stop().catch(() => {}); qrScanner = null; }
         document.getElementById('qr-step-1').classList.add('hidden');
         document.getElementById('qr-step-2').classList.remove('hidden');
       } else {
         const err = document.getElementById('qr-err');
-        err.textContent = `Invalid QR code. Expected chair tag: ${expected}`;
+        err.textContent = `Invalid QR code. Expected: ${expected}`;
         err.classList.remove('hidden');
       }
     }
@@ -1127,7 +1030,7 @@
         });
         btn.className = 'dur-btn p-4 border border-white bg-white text-black text-left transition';
         btn.querySelector('span:last-child').className = 'text-[11px] text-black/60';
-        document.getElementById('btn-confirm-duration').querySelector('span').textContent = `Confirm ${selectedHours}-Hour Session`;
+        document.getElementById('btn-confirm-duration').querySelector('span').textContent = `Confirm (${selectedHours}h) & Start Third Eye AI`;
       });
     });
 
@@ -1135,45 +1038,32 @@
       const mine = getMySeat();
       if (!mine) return;
       const until = new Date(Date.now() + selectedHours * 60 * 60 * 1000).toISOString();
-
-      const { error } = await db
-        .from('library_seats')
-        .update({
-          status: 'occupied',
-          hold_expires_at: null,
-          occupied_until: until,
-        })
-        .eq('id', mine.id);
+      const { error } = await db.from('library_seats').update({
+        status: 'occupied', hold_expires_at: null, occupied_until: until, presence_state: 'present', break_until: null
+      }).eq('id', mine.id);
 
       if (!error) {
         closeQrModal();
-        showToast(`Confirmed. Chair ${mine.seat_label} locked for ${selectedHours} hour(s).`);
-        fetchSeats();
+        showToast(`Confirmed for ${selectedHours}h. Third Eye AI Presence Sentinel engaged.`);
+        await fetchSeats();
+        // Wait 350ms for rear QR scanner camera to fully release before opening front Third Eye camera
+        setTimeout(() => startThirdEye(), 350);
       }
     });
 
-    // 11. 3D Camera Orbit Controls
+    // 10. 3D Camera Orbit
     const stageEl = document.getElementById('floor-stage');
     const tiltIn = document.getElementById('cam-tilt');
     const spinIn = document.getElementById('cam-spin');
-
-    function updateCam() {
-      stageEl.style.transform = `rotateX(${tiltIn.value}deg) rotateZ(${spinIn.value}deg)`;
-    }
-    window.setCam = (t, s) => {
-      tiltIn.value = t;
-      spinIn.value = s;
-      updateCam();
-    };
+    function updateCam() { stageEl.style.transform = `rotateX(${tiltIn.value}deg) rotateZ(${spinIn.value}deg)`; }
+    window.setCam = (t, s) => { tiltIn.value = t; spinIn.value = s; updateCam(); };
     tiltIn.addEventListener('input', updateCam);
     spinIn.addEventListener('input', updateCam);
 
-    // Boot Realtime & Initial State
+    // Boot App
     syncAuthUI();
     fetchSeats();
-    db.channel('aether-student-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'library_seats' }, fetchSeats)
-      .subscribe();
+    db.channel('aether-student-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'library_seats' }, fetchSeats).subscribe();
     setInterval(fetchSeats, 10000);
   </script>
 </body>
